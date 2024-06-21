@@ -1,0 +1,27 @@
+﻿<Window x:Class="Symbolic_Algebra_Solver.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:controls="clr-namespace:WpfMath.Controls;assembly=WpfMath"
+        xmlns:local="clr-namespace:Symbolic_Algebra_Solver"
+        mc:Ignorable="d"
+        Title="Symbolic Calcuator" Height="450" Width="800">
+    <Grid>
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Orientation="Vertical">
+            <Label FontSize="10" Padding="3 0 0 3">Expression</Label>
+            <StackPanel Orientation="Horizontal">
+                <TextBox Text="{Binding Expression.InputExpression, UpdateSourceTrigger=PropertyChanged}" Height="25" Width="256" VerticalContentAlignment="Center"/>
+                <Button Command="{Binding SimplifyExpressionCommand}" Margin="15 0 0 0"  FontSize="11" Padding="3">
+                    Simplify
+                    <Button.Resources>
+                        <Style TargetType="Border">
+                            <Setter Property="CornerRadius" Value="5"/>
+                        </Style>
+                    </Button.Resources>
+                </Button>
+            </StackPanel>
+            <controls:FormulaControl Margin="0 10 0 0" Formula="{Binding Expression.SimplifiedExpression}" />
+        </StackPanel>
+    </Grid>
+</Window>
