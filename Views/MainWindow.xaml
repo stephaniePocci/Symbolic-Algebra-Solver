@@ -21,7 +21,7 @@
                     </Button.Resources>
                 </Button>
             </StackPanel>
-            <controls:FormulaControl Margin="0 10 0 0" Formula="{Binding Expression.SimplifiedExpression}" />
+            <controls:FormulaControl Margin="0 10 0 0" Formula="{Binding Expression.SimplifiedExpression}"/>
         </StackPanel>
     </Grid>
 </Window>

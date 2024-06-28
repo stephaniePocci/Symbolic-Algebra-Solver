@@ -27,7 +27,7 @@ namespace Symbolic_Algebra_Solver.ViewModels
         }
         private void SimplifyExpression(object? parameter)
         {
-            Expression.Simplify();
+            Expression.SympySimplify();
         }
     }
 }
