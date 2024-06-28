@@ -25,34 +25,51 @@ namespace Symbolic_Algebra_Solver.Models
         {
             try
             {
+                Console.WriteLine("Attempting to parse expression...");
                 var parsedExpression = Infix.ParseOrThrow(InputExpression);
                 SimplifiedExpression = LaTeX.Format(parsedExpression);
+                Console.WriteLine("Simplified expression: " + SimplifiedExpression);
             }
             catch (Exception e)
             {
+                Console.WriteLine("Error: " + e.Message);
                 SimplifiedExpression = e.Message;
             }
         }
 
         public void SympySimplify()
         {
-            using (Py.GIL())
+            try
             {
-                dynamic sympy = Py.Import("sympy");
-                try
+                using (Py.GIL())
                 {
-                    PyObject inputExpression = new PyString(InputExpression);
-                    dynamic parsedExpression = sympy.sympify(inputExpression);
-                    dynamic factoredExpression = sympy.factor(parsedExpression);
-                    dynamic latexExpression = sympy.latex(factoredExpression);
+                    Console.WriteLine("Attempting to import sympy...");
+                    dynamic sympy = Py.Import("sympy");
+                    Console.WriteLine("Sympy import successful...");
 
-                    SimplifiedExpression = latexExpression.ToString();
-                }
-                catch (Exception e)
-                {
-                    SimplifiedExpression = e.Message;
+                    try
+                    {
+                        PyObject inputExpression = new PyString(InputExpression);
+                        dynamic parsedExpression = sympy.sympify(inputExpression);
+                        dynamic factoredExpression = sympy.factor(parsedExpression);
+                        dynamic latexExpression = sympy.latex(factoredExpression);
+
+                        SimplifiedExpression = latexExpression.ToString();
+                        Console.WriteLine("Sympy simplified expression: " + SimplifiedExpression);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("Sympy error: " + e.Message);
+                        SimplifiedExpression = e.Message;
+                    }
                 }
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine("General error: " + ex.Message);
+                SimplifiedExpression = $"An error occurred: {ex.Message}";
+            }
         }
+
     }
 }

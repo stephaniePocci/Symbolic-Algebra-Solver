@@ -10,23 +10,43 @@ namespace Symbolic_Algebra_Solver
     /// </summary>
     public partial class App : Application
     {
-        private async void OnStartUp(object sender, StartupEventArgs e)
+       private async void OnStartUp(object sender, StartupEventArgs e)
         {
-            Python.Deployment.Installer.Source = new Python.Deployment.Installer.EmbeddedResourceInstallationSource()
+            try
             {
-                Assembly = typeof(App).Assembly,
-                ResourceName = "./Resources/python-3.12.4-embed-amd64.zip",
-            };
+                // Set the source for the embedded Python installation
+                Python.Deployment.Installer.Source = new Python.Deployment.Installer.EmbeddedResourceInstallationSource()
+                {
+                    Assembly = typeof(App).Assembly,
+                    ResourceName = "./Resources/python-3.12.4-embed-amd64.zip",
+                };
 
-            Python.Deployment.Installer.InstallPath = Path.GetFullPath(".");
+                // Set the installation path
+                Python.Deployment.Installer.InstallPath = Path.GetFullPath(".");
 
-            await Python.Deployment.Installer.SetupPython();
+                // Setup Python environment
+                await Python.Deployment.Installer.SetupPython();
+                Console.WriteLine("Python setup completed.");
 
-            await Python.Deployment.Installer.InstallWheel("./Resources/mpmath-1.3.0-py3-none-any.whl");
-            await Python.Deployment.Installer.InstallWheel("./Resources/sympy-1.13.0rc3-py3-none-any.whl");
+                // Install mpmath
+                Console.WriteLine("Installing mpmath...");
+                await Python.Deployment.Installer.InstallWheel("./Resources/mpmath-1.3.0-py3-none-any.whl");
+                Console.WriteLine("mpmath installed successfully.");
 
-            Runtime.PythonDLL = "./python-3.12.4-embed-amd64/python312.dll";
-            PythonEngine.Initialize();
+                // Install sympy
+                Console.WriteLine("Installing sympy...");
+                await Python.Deployment.Installer.InstallWheel("./Resources/sympy-1.13.0rc3-py3-none-any.whl");
+                Console.WriteLine("sympy installed successfully.");
+
+                // Set the path to the Python DLL
+                Runtime.PythonDLL = "./python-3.12.4-embed-amd64/python312.dll";
+                PythonEngine.Initialize();
+                Console.WriteLine("Python engine initialized.");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Python environment setup failed: {ex.Message}");
+            }
         }
 
         private void OnExit(object sender, ExitEventArgs e)
