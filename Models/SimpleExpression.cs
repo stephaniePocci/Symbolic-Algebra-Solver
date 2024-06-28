@@ -2,20 +2,15 @@
 using Python.Runtime;
 using Symbolic_Algebra_Solver.Utils;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
-using static Microsoft.FSharp.Core.ByRefKinds;
+using System.ComponentModel;
 
 namespace Symbolic_Algebra_Solver.Models
 {
-    public class SimpleExpression:Observable
+    public class SimpleExpression : Observable
     {
-        public string InputExpression { get; set; } = String.Empty;
+        public string InputExpression { get; set; } = string.Empty;
 
-        private string _SimplifiedExpression = String.Empty;
+        private string _SimplifiedExpression = string.Empty;
         public string SimplifiedExpression
         {
             get { return _SimplifiedExpression; }
@@ -30,7 +25,8 @@ namespace Symbolic_Algebra_Solver.Models
         {
             try
             {
-                SimplifiedExpression = SymbolicExpression.Parse(InputExpression).ToLaTeX();
+                var parsedExpression = Infix.ParseOrThrow(InputExpression);
+                SimplifiedExpression = LaTeX.Format(parsedExpression);
             }
             catch (Exception e)
             {
@@ -40,27 +36,23 @@ namespace Symbolic_Algebra_Solver.Models
 
         public void SympySimplify()
         {
-
             using (Py.GIL())
             {
-                dynamic mod = Py.Import("sympy");
+                dynamic sympy = Py.Import("sympy");
                 try
                 {
-                    //var res = mod.latex(mod.factor(InputExpression));
-                    //SimplifiedExpression = res;
-                    PyString str = new PyString(InputExpression);
-                    var res = mod.InvokeMethod("factor", new PyObject[] { str });
-                    var res2 = mod.InvokeMethod("latex", new PyObject[] { res });
-                    if (res2 != null) { SimplifiedExpression = res2.ToString(); }
+                    PyObject inputExpression = new PyString(InputExpression);
+                    dynamic parsedExpression = sympy.sympify(inputExpression);
+                    dynamic factoredExpression = sympy.factor(parsedExpression);
+                    dynamic latexExpression = sympy.latex(factoredExpression);
+
+                    SimplifiedExpression = latexExpression.ToString();
                 }
-                catch(Exception e)
+                catch (Exception e)
                 {
                     SimplifiedExpression = e.Message;
                 }
-
             }
-
-            
         }
     }
 }
