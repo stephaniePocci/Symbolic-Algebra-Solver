@@ -19,7 +19,7 @@ namespace Symbolic_Algebra_Solver
             };
 
             Python.Deployment.Installer.InstallPath = Path.GetFullPath(".");
-
+            
             await Python.Deployment.Installer.SetupPython();
 
             await Python.Deployment.Installer.InstallWheel("./Resources/mpmath-1.3.0-py3-none-any.whl");

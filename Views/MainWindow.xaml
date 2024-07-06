@@ -10,9 +10,9 @@
     <Grid>
         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Orientation="Vertical">
             <Label FontSize="10" Padding="3 0 0 3">Expression</Label>
+            <TextBox Text="{Binding Expression.InputExpression, UpdateSourceTrigger=PropertyChanged}" Height="25" Width="256" VerticalContentAlignment="Center"/>
             <StackPanel Orientation="Horizontal">
-                <TextBox Text="{Binding Expression.InputExpression, UpdateSourceTrigger=PropertyChanged}" Height="25" Width="256" VerticalContentAlignment="Center"/>
-                <Button Command="{Binding SimplifyExpressionCommand}" Margin="15 0 0 0"  FontSize="11" Padding="3">
+                <Button Command="{Binding SimplifyCommand}" Margin="0 5 0 0"  FontSize="11" Padding="3">
                     Simplify
                     <Button.Resources>
                         <Style TargetType="Border">
@@ -20,8 +20,16 @@
                         </Style>
                     </Button.Resources>
                 </Button>
+                <Button Command="{Binding FactorCommand}" Margin="5 5 0 0"  FontSize="11" Padding="3">
+                    Factor
+                    <Button.Resources>
+                        <Style TargetType="Border">
+                            <Setter Property="CornerRadius" Value="5"/>
+                        </Style>
+                    </Button.Resources>
+                </Button>
             </StackPanel>
-            <controls:FormulaControl Margin="0 10 0 0" Formula="{Binding Expression.SimplifiedExpression}"/>
+            <controls:FormulaControl Margin="0 10 0 0" Formula="{Binding Expression.OutputExpression}"/>
         </StackPanel>
     </Grid>
 </Window>

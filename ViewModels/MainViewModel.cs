@@ -1,11 +1,5 @@
 ﻿using Symbolic_Algebra_Solver.Models;
 using Symbolic_Algebra_Solver.Utils;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
 using System.Windows.Input;
 
 namespace Symbolic_Algebra_Solver.ViewModels
@@ -13,21 +7,34 @@ namespace Symbolic_Algebra_Solver.ViewModels
     public class MainViewModel
     {
         public SimpleExpression Expression { get; set; }
-        public ICommand SimplifyExpressionCommand { get; set; }
-
+        
         public MainViewModel()
         {
             Expression = new SimpleExpression();
-            SimplifyExpressionCommand = new RelayCommand(SimplifyExpression, CanSimplifyExpression);
+            SimplifyCommand = new RelayCommand(SimplifyExpression, CanSimplify);
+            FactorCommand = new RelayCommand(FactorExpression, CanFactor);
         }
 
-        private bool CanSimplifyExpression(object? parameter)
+        public ICommand SimplifyCommand { get; set; }
+
+        private bool CanSimplify(object? parameter)
         {
             return true;
         }
         private void SimplifyExpression(object? parameter)
         {
-            Expression.SympySimplify();
+            Expression.Simplify();
+        }
+
+        public ICommand FactorCommand { get; set; }
+
+        private bool CanFactor(object? parameter)
+        {
+            return true;
+        }
+        private void FactorExpression(object? parameter)
+        {
+            Expression.Factor();
         }
     }
 }

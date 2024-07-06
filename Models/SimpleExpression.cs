@@ -1,8 +1,6 @@
-﻿using MathNet.Symbolics;
-using Python.Runtime;
+﻿using Python.Runtime;
 using Symbolic_Algebra_Solver.Utils;
-using System;
-using System.ComponentModel;
+using Sympy;
 
 namespace Symbolic_Algebra_Solver.Models
 {
@@ -10,48 +8,30 @@ namespace Symbolic_Algebra_Solver.Models
     {
         public string InputExpression { get; set; } = string.Empty;
 
-        private string _SimplifiedExpression = string.Empty;
-        public string SimplifiedExpression
+        private string _OutputExpression = string.Empty;
+        public string OutputExpression
         {
-            get { return _SimplifiedExpression; }
+            get { return _OutputExpression; }
             set
             {
-                _SimplifiedExpression = value;
+                _OutputExpression = value;
                 OnPropertyChanged();
             }
         }
 
         public void Simplify()
         {
-            try
+            using (Py.GIL())
             {
-                var parsedExpression = Infix.ParseOrThrow(InputExpression);
-                SimplifiedExpression = LaTeX.Format(parsedExpression);
-            }
-            catch (Exception e)
-            {
-                SimplifiedExpression = e.Message;
+                OutputExpression = SympyCS.simplify(InputExpression);
             }
         }
 
-        public void SympySimplify()
+        public void Factor()
         {
             using (Py.GIL())
             {
-                dynamic sympy = Py.Import("sympy");
-                try
-                {
-                    PyObject inputExpression = new PyString(InputExpression);
-                    dynamic parsedExpression = sympy.sympify(inputExpression);
-                    dynamic factoredExpression = sympy.factor(parsedExpression);
-                    dynamic latexExpression = sympy.latex(factoredExpression);
-
-                    SimplifiedExpression = latexExpression.ToString();
-                }
-                catch (Exception e)
-                {
-                    SimplifiedExpression = e.Message;
-                }
+                OutputExpression = SympyCS.factor(InputExpression);
             }
         }
     }
