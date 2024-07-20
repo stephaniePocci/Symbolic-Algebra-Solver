@@ -4,38 +4,54 @@ namespace Sympy
 {
     public partial class SympyCS
     {
-        private static readonly PyObject sympy;
-        private static readonly PyObject parseExpr;
+        private static readonly dynamic sympyCore;
+        private static readonly dynamic sympyParser;
+
+        private static readonly dynamic[] transformation_functions;
 
         static SympyCS()
         {
-            sympy = Py.Import("sympy");
-            parseExpr = Py.Import("parseExpr");
+            sympyCore =  Py.Import("sympy");
+            sympyParser = Py.Import("sympy.parsing.sympy_parser");
+            transformation_functions = 
+            [
+                sympyParser.lambda_notation, 
+                sympyParser.auto_symbol, 
+                sympyParser.repeated_decimals, 
+                sympyParser.auto_number,
+                sympyParser.factorial_notation, 
+                sympyParser.implicit_multiplication_application, 
+                sympyParser.convert_xor
+            ];
         }
 
-        private static PyObject parse_expr(string input)
+        public static PyObject parse_expr(string input)
         {
-            var pyargs = new PyString(input);
-            return parseExpr.InvokeMethod("parse_expression", new PyObject[] { pyargs });
+            PyObject res = sympyParser.parse_expr(input, transformations: transformation_functions, evaluate: false);
+            return res;
         }
 
         public static string latex(PyObject input)
         {
-            PyObject outExpr = sympy.InvokeMethod("latex", new PyObject[] { input }); ;
+            PyObject outExpr = sympyCore.latex(input);
+            return outExpr.ToString()!;
+        }
+
+        public static string latex(string input) 
+        {
+            PyObject outExpr = sympyCore.latex(parse_expr(input), order: "none");
             return outExpr.ToString()!;
         }
 
         public static string simplify(string input)
         {
-            var pyargs = parse_expr(input);
-            PyObject outExpr = sympy.InvokeMethod("simplify", pyargs);
+            PyObject outExpr = sympyCore.simplify(parse_expr(input));
             return latex(outExpr);
         }
 
         public static string factor(string input)
         {
-            var pyargs = parse_expr(input);
-            PyObject outExpr = sympy.InvokeMethod("factor", new PyObject[] { pyargs });
+            PyObject outExpr = sympyCore.factor(parse_expr(input));
             return latex(outExpr);
         } 
     }
