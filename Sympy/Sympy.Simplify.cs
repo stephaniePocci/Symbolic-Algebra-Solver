@@ -54,5 +54,17 @@ namespace Sympy
             PyObject outExpr = sympyCore.factor(parse_expr(input));
             return latex(outExpr);
         } 
+
+        public static string log(string input)
+        {
+            PyObject parsedExpr = parse_expr(input); // Parse the input expression
+            PyObject outExpr = sympyCore.log(parsedExpr); // Calculate natural logarithm
+
+            // Evaluate the result to a numerical value
+            PyObject evaluatedExpr = sympyCore.N(outExpr);
+            return evaluatedExpr.ToString();
+        }
+
+
     }
 }

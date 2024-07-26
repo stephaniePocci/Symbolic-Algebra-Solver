@@ -12,6 +12,7 @@ namespace Symbolic_Algebra_Solver.Models
         {
             SimplifyCommand = new DelegateCommand(SimplifyExpression, CanSimplify);
             FactorCommand   = new DelegateCommand(FactorExpression, CanFactor);
+            LogCommand = new DelegateCommand(LogExpression, CanLog);
         }
 
         // parsed latex string of the input expression
@@ -109,6 +110,20 @@ namespace Symbolic_Algebra_Solver.Models
             }
         }
 
+        public void Log()
+        {
+            if (!CheckParenthesis(_InputExpression))
+            {
+                MessageBox.Show("Mismatched parenthesis!");
+                return;
+            }
+
+            using (Py.GIL())
+            {
+                OutputExpression = SympyCS.log(_InputExpression);
+            }
+        }
+
         #endregion
 
         #region ICommand Members
@@ -133,6 +148,18 @@ namespace Symbolic_Algebra_Solver.Models
         private void FactorExpression()
         {
             Factor();
+        }
+
+        public DelegateCommand LogCommand { get; set; }
+
+        private bool CanLog()
+        {
+            return true;
+        }
+
+        private void LogExpression()
+        {
+            Log();
         }
 
         #endregion
