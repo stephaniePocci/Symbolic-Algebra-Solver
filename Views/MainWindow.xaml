@@ -29,6 +29,14 @@
                         </Style>
                     </Button.Resources>
                 </Button>
+                <Button Command="{Binding Expression.LogCommand}" Margin="5 5 0 0"  FontSize="11" Padding="3">
+                    Ln
+                    <Button.Resources>
+                        <Style TargetType="Border">
+                            <Setter Property="CornerRadius" Value="5"/>
+                        </Style>
+                    </Button.Resources>
+                </Button>
             </StackPanel>
             <Label Padding="0 5 5 5">This expression will be simplified:</Label>
             <Border BorderBrush="Black" Padding="5" BorderThickness="0.8" MinHeight="100" CornerRadius="2">
