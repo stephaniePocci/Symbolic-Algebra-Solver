@@ -42,19 +42,17 @@ namespace Symbolic_Algebra_Solver.Parsing
             _keywordDictionary = new ReadOnlyDictionary<string, string[]>(keywordDictionary);
         }
 
-        private List<Token> _tokenList = new();
-        private StringBuilder _builder = new();
+        private readonly List<Token> _tokenList = new();
+        private readonly StringBuilder _builder = new();
         private int _position = 0;
 
         /// <summary>
         /// Parse a input expression into a list of tokens.
         /// </summary>
         /// <param name="input">Input expression string</param>
-        /// <param name="tokenList">Output list of tokens</param>
         /// <param name="error">String containing error message if method returns false</param>
         /// <returns>
-        /// True on success, <paramref name="tokenList"/> will contain list of tokens and <paramref name="error"/> will be null.
-        /// False on fail, <paramref name="tokenList"/> will be null and <paramref name="error"/> will contain a error message.
+        /// True on success, Else false on fail.
         /// </returns>
         public bool TryTokenize(string input, [NotNullWhen(false)]out string? error)
         {
@@ -105,15 +103,29 @@ namespace Symbolic_Algebra_Solver.Parsing
             return true;
         }
 
+        /// <summary>
+        /// Moves the pointer from current token to the next and returns that result.
+        /// </summary>
+        /// <exception cref="AssertionFailedException"></exception>
+        /// <returns>
+        /// The token that is being pointed after calling ScanToken.
+        /// Throws exception if token is null due to TryTokenizer failing or not being run on a string input.
+        /// If ScanToken attempts to scan pass the end of the tokenlist then it will simply just return the last token.
+        /// 
+        /// </returns>
         public Token ScanToken()
         {
-            if (_tokenList != null && _position < _tokenList.Count)
+            if (_tokenList == null)
+            {
+                throw new AssertionFailedException("Scaning null token failure!");
+            }
+            if (_position < _tokenList.Count)
             {
                 return _tokenList[_position++];
             }
             else
             {
-                return new Token(";", TokenType.None);
+                return _tokenList[_tokenList.Count - 1];
             }
         }
 
@@ -159,7 +171,7 @@ namespace Symbolic_Algebra_Solver.Parsing
             {
                 _builder.Append(input[index++]);
 
-                // a numeric starting with zero is invalid unless followed up by a decimal, Ex: 05 is invalid but 0.5 is valid
+                // a numeric starting with zero is invalid unless followed up by a decimal, or is a lone zero, Ex: 05 is invalid but 0.5 is valid
                 if ( index < input.Length && input[index] == '.' )
                 {
                     _builder.Append(input[index++]);
@@ -167,7 +179,7 @@ namespace Symbolic_Algebra_Solver.Parsing
                 }
                 else
                 {
-                    if (index < input.Length)
+                    if (index < input.Length && Char.IsDigit(input[index]))
                     {
                         // invalid integer
                          return "Invalid numeric, integers cannot start with zero.";
@@ -190,7 +202,7 @@ namespace Symbolic_Algebra_Solver.Parsing
             // if float has a trailing decimal point remove it, Ex: 5. is simply 5
             if (isFloat && input[index - 1] == '.') 
             {
-                _builder.Remove(index - 1, 1);    
+                _builder.Remove(_builder.Length - 1, 1);    
             }
 
             _tokenList!.Add( new Token(_builder.ToString(), TokenType.Numeric) );
