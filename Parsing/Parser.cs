@@ -1,469 +1,288 @@
-﻿using System.Diagnostics;
+﻿
 using System.Diagnostics.CodeAnalysis;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Symbolic_Algebra_Solver.Parsing
 {
-    public static class Parser
+    public class Parser
     {
-        public static bool TryParse(List<string> tokenList, [NotNullWhen(true)] out AbstractSyntaxTree? output, [NotNullWhen(false)] out string? errorMsg)
-        {
-            if (tokenList.Count == 0)
-            {
-                throw new AssertionFailedException("Empty token list is not allowed!");
-            }
+        // The parser is implemented using recursive descent, below is a general description of what syntax the parser expects.
+        // "|" means either or, items inside brackets mean zero or more. So for example a expression here is defined as a Term0 folowed by zero or more Term0s' that have
+        // either a plus or minus operator infront.
 
-            Stack<OperatorEnum> operatorStack = new Stack<OperatorEnum>();
-            Stack<KeywordFunctionNode> functionStack = new Stack<KeywordFunctionNode>(); // stack to hold function keywords like sin, cos...
-            Stack<AbstractSyntaxTree>  operandStack =  new Stack<AbstractSyntaxTree>();
+        /*
+            Expression   := Term0 { ("+" | "-") Term0 }
+            Term0        := Term1 { ( "*" | "/" ) Term1 }
+            Term1        := Factor | ( Factor "^" Factor )
+            Factor       := { "-" Factor } | ( Symbol | Keyword | KeywordFunction | Numeric | "(" Expression ")" )
 
-            operatorStack.Push(OperatorEnum.OperatorNone);
+            Symbols are any single character unicode letters, keywords can be words that represent symbols such as pi, theta, alpha, etc, keyword functions represent sin, cos, etc,
+            and numerics are any number literals.
+         */
 
-            errorMsg = null;
-            int unMatchedFunctions   = 0; // track number of function keywords that need a matching function call operator, used to handle inputs such as sin^(2)(x) where pushing a function call operator is delayed
-            int index = 0;
-
-            // Alternate between unary and binary loops until all tokens are processed
-            while (true) 
-            {
-                // unary state loop
-                while (true)
-                {
-                    switch (tokenList[index]) 
-                    {
-                        case "(":
-                            operatorStack.Push(OperatorEnum.OpeningParenthesis);
-                            ++index;
-                            continue; // stay in unary loop
-                        case "-":
-                            if (operatorStack.Peek() == OperatorEnum.FunctionPower)
-                            {
-                                errorMsg = "Use parenthsis around function exponents. Ex: sin^(3+5)(x) instead of sin^3+5(x)";
-                                output = null;
-                                return false;
-                            }
-                            operatorStack.Push(OperatorEnum.Negation); // highest precendence so just push
-                            ++index;
-                            continue; // stay in unary loop
-
-                        // matching binary operators while in unary mode means there are missing operands
-                        case "+":
-                        case "*":
-                        case "/":
-                        case "^":
-                            if (operatorStack.Peek() == OperatorEnum.FunctionPower)
-                            {
-                                output = null;
-                                errorMsg = "Use parenthsis around function exponents. Ex: sin^(3+5)(x) instead of sin^3+5(x)";
-                                return false;
-                            }
-                            operandStack.Push(new EmptyOperandNode());
-                            break;
-                        case ")":
-                            output = null;
-                            errorMsg = "Unexpected: ')'";
-                            return false;
-                        case ";":
-                            operandStack.Push(new EmptyOperandNode());
-                            goto ExitLoop; // semi colon marks end of token list
-                        default:
-                            // push keyword node to operand stack or function stack
-                            if (Grammer.Keywords.TryGetValue(tokenList[index], out Keyword? value)) 
-                            {
-                                if (value.IsFunction)
-                                {
-                                    if (operatorStack.Peek() == OperatorEnum.FunctionPower)
-                                    {
-                                        output = null;
-                                        errorMsg = "Use parenthsis around function exponents. Ex: sin^(3+5)(x) instead of sin^3+5(x)";
-                                        return false;
-                                    }
-
-                                    functionStack.Push(CreateKeywordFunctionNode(value.Id));
-                                    ++index;
-
-                                    // the token following a function must be a power operator or a function call operator
-                                    if (index < tokenList.Count)
-                                    {
-                                        // next token is function call operator so insert
-                                        if (tokenList[index] == "(")
-                                        {
-                                            operatorStack.Push(OperatorEnum.FunctionCall);
-                                            ++index;
-                                            continue;
-                                        }
-                                        // if function has a power operator, insert special function power enum, for edge cases like sin^(2)(x)
-                                        else if (tokenList[index] == "^")
-                                        {
-                                            operatorStack.Push(OperatorEnum.FunctionPower);
-                                            ++unMatchedFunctions; // increment so we know to later insert a matching function call operator for this keyword function
-                                            ++index;
-                                            continue;
-                                        }
-                                        // else the next token after function keyword is not a function call operator, insert function call operator implicitly
-                                        else
-                                        {
-                                            operatorStack.Push(OperatorEnum.ImplicitFunctionCall);
-                                            continue;
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    operandStack.Push( CreateKeywordSymbolNode(value.Id) );
-                                }
-                            }
-                            // pushing a single character that is a unicode letter as a symbol node to operand stack
-                            else if (Char.TryParse(tokenList[index], out char c) && Char.IsLetter(c))
-                            {
-                                operandStack.Push(new SymbolNode(c));
-                                ++index;
-                            }
-                            // pushing a numeric token
-                            else
-                            {
-                                operandStack.Push(new NumericNode(tokenList[index]));
-                                ++index;
-                            }
-                            
-                            break;
-                    }
-
-                    break; // exit unary loop
-                }
-                
-                // binary state loop
-                while (true) 
-                {
-
-                    switch (tokenList[index])
-                    {
-                        case "-":
-                            errorMsg = PushOperatorByPrecedence(OperatorEnum.Minus, operatorStack, operandStack);
-                            ++index;
-                            break;
-                        case "+":
-                            errorMsg = PushOperatorByPrecedence(OperatorEnum.Plus, operatorStack, operandStack);
-                            ++index;
-                            break;
-                        case "*":
-                            errorMsg = PushOperatorByPrecedence(OperatorEnum.Multiply, operatorStack, operandStack);
-                            ++index;
-                            break;
-                        case "/":
-                            errorMsg = PushOperatorByPrecedence(OperatorEnum.Divide, operatorStack, operandStack);
-                            ++index;
-                            break;
-                        case "^":
-                            errorMsg = PushOperatorByPrecedence(OperatorEnum.Power, operatorStack, operandStack);
-                            ++index;
-                            break;
-                        case "(":
-                            if (unMatchedFunctions > 0 && operatorStack.Peek() == OperatorEnum.FunctionPower)
-                            {
-                                operatorStack.Push(OperatorEnum.FunctionCall);
-                                --unMatchedFunctions;
-                                ++index;
-                            }
-                            // handle implicit muliplication
-                            else
-                            {
-                                errorMsg = PushOperatorByPrecedence(OperatorEnum.Multiply, operatorStack, operandStack);
-                            }
-                            
-                            break;
-                        case ")":
-                            errorMsg = TryAcceptClosingParenthesis(operatorStack, operandStack, functionStack);
-                            if (errorMsg != null)
-                            {
-                                output = null;
-                                return false;
-                            }
-
-                            ++index;
-                            continue; // stay in binary loop
-                        case ";": 
-                            goto ExitLoop; // semi colon marks end of token list
-
-                        // encountered operand when expected a operator
-                        default:
-                            // match functions such as sin^2x, function operator inserted between 2 and x
-                            if (unMatchedFunctions > 0 && operatorStack.Peek() == OperatorEnum.FunctionPower)
-                            {
-                                operatorStack.Push(OperatorEnum.ImplicitFunctionCall);
-                                --unMatchedFunctions;
-                            }
-                            else
-                            {
-                                // handle implicit muliplication
-                                errorMsg = PushOperatorByPrecedence(OperatorEnum.Multiply, operatorStack, operandStack);
-                            }
-                    
-                            break;
-                    }
-
-                    if (errorMsg != null)
-                    {
-                        output = null;
-                        return false;
-                    }
-
-                    break; // // exit binary loop
-                }
-            }
-
-            ExitLoop:
-
-            OperatorEnum op;
-
-            // insert remaining unmatched function call operators
-            while (unMatchedFunctions > 0)
-            {
-                op = operatorStack.Peek();
-
-                if (op == OperatorEnum.FunctionPower)
-                {
-                    operandStack.Push(new EmptyOperandNode());
-                    BindFunctionCall(functionStack, operandStack);
-                    BindOperator(operatorStack.Pop(), operandStack);
-
-                    --unMatchedFunctions;
-                }
-                else if (op != OperatorEnum.OpeningParenthesis)
-                {
-                    if (op == OperatorEnum.FunctionCall || op == OperatorEnum.ImplicitFunctionCall)
-                    {
-                        operatorStack.Pop();
-                        BindFunctionCall(functionStack, operandStack);
-                    }
-                    else
-                    {
-                        BindOperator(operatorStack.Pop(), operandStack);  
-                    }
-                }
-                // pop and ignore and left over opening parenthesis
-                else
-                {
-                    operatorStack.Pop();
-                }
-            }
-
-            // all functions have matching function call operators at this point so just
-            // bind any remaining operators
-            while ( (op = operatorStack.Pop()) != OperatorEnum.OperatorNone ) 
-            {
-                if (op == OperatorEnum.FunctionCall || op == OperatorEnum.ImplicitFunctionCall)
-                {
-                    BindFunctionCall(functionStack, operandStack);
-                }
-                else if (op != OperatorEnum.OpeningParenthesis)
-                {
-                    BindOperator(op, operandStack);
-                }
-
-                // pop and ignore and left over opening parenthesis
-            }
-
-            if (operandStack.Count == 1)
-            {
-                output = operandStack.Pop();
-                return true;
-            }
-            else
-            {
-                throw new AssertionFailedException("Operand stack should only have a single abstract syntax tree node when parsing is finished!");
-            }
-        }
+        private Token? _nextToken;
+        private Tokenizer _scanner = new();
 
         /// <summary>
-        /// Push the specified operator onto the operator stack.
+        /// Parses the input string into a abstract syntax tree.
         /// </summary>
-        /// <param name="op">Operator enum to be pushed</param>
-        /// <param name="operatorStack">Stack of operators</param>
-        /// <param name="operandStack">Stack of operands</param>
-        /// <returns>Null on success, error message string on fail.</returns>
-        private static string? PushOperatorByPrecedence(OperatorEnum op, Stack<OperatorEnum> operatorStack, Stack<AbstractSyntaxTree> operandStack)
+        /// <param name="input">Input string</param>
+        /// <param name="result">Abstract synatx tree output, null on parsing fail</param>
+        /// <param name="status">String that contains error message if parsing fails</param>
+        /// <returns>True on parsing success, else false</returns>
+        public bool TryParse(string input, [NotNullWhen(true)] out AbstractSyntaxTree? result, [NotNullWhen(false)] out string? status)
         {
-            Operator newOp = Grammer.Operators[op]; // operator being pushed
-
-            Operator stackOp; // operator on top of the stack
-            OperatorEnum stackOpEnum;
-
-            while ( (stackOpEnum = operatorStack.Peek()) != OperatorEnum.OperatorNone )
+            if (!_scanner.TryTokenize(input, out status))
             {
-                stackOp = Grammer.Operators[stackOpEnum];
-
-                if (newOp.Precedence > stackOp.Precedence)
-                {
-                    break; // exit while loop
-                }
-                else if (newOp.Precedence < stackOp.Precedence)
-                {
-                    BindOperator(operatorStack.Pop(), operandStack);
-                }
-                else
-                {
-                    switch (stackOp.Associativity)
-                    {
-                        case OperatorAssociativity.Left:
-                            BindOperator(operatorStack.Pop(), operandStack);
-                            continue; // continue to next loop iteration
-                        case OperatorAssociativity.None:
-                        case OperatorAssociativity.Right:
-                            break;
-                    }
-
-                    break; // exit while loop
-                }
+                result = null;
+                return false;
             }
 
-            operatorStack.Push(op);
-            return null;
+            _nextToken = _scanner.ScanToken();
+
+            try 
+            {
+                result = ParseExpression();
+            }
+            catch (ParsingFailedException e)
+            {
+                status = e.Message;
+                result = null;
+                return false;
+            }
+
+            if (_nextToken.Value != ";")
+            {
+                status = ( _nextToken.Value == ")" ) ? "Unexpected ')'." : "Parsing error.";
+                result = null;
+                return false;
+            }
+
+            status = null;
+            return true;
         }
 
-        /// <summary>
-        /// Create and push a abstract syntax tree for the input operator with operands from the operand stack onto the operand stack.
-        /// This effectively binds the operator with its respective operands from the stack.
-        /// </summary>
-        /// <remarks>
-        /// Function call operators are a special case, use <see cref="BindFunctionCall(Stack{KeywordFunctionNode}, Stack{AbstractSyntaxTree})"/>
-        /// to bind functions with their operands.
-        /// </remarks>
-        /// <param name="op">Operator to create Ast for and to push.</param>
-        /// <param name="operandStack">Operand stack use to create the Ast for the operator.</param>
-        private static void BindOperator(OperatorEnum op, Stack<AbstractSyntaxTree> operandStack)
+        private AbstractSyntaxTree ParseExpression()
         {
-            AbstractSyntaxTree left;
-            AbstractSyntaxTree right;
-
-            switch (op)
-            {
-                case OperatorEnum.Negation:
-                    operandStack.Push(new NegationOperatorNode(operandStack.Pop()));
-                    break;
-                case OperatorEnum.Plus:
-                    right = operandStack.Pop();
-                    left = operandStack.Pop();
-                    operandStack.Push(new PlusOperatorNode(left, right));
-                    break;
-                case OperatorEnum.Minus:
-                    right = operandStack.Pop();
-                    left = operandStack.Pop();
-                    operandStack.Push(new MinusOperatorNode(left, right));
-                    break;
-                case OperatorEnum.Multiply:
-                    right = operandStack.Pop();
-                    left = operandStack.Pop();
-                    operandStack.Push(new MultiplyOperatorNode(left, right));
-                    break;
-                case OperatorEnum.Divide:
-                    right = operandStack.Pop();
-                    left = operandStack.Pop();
-                    operandStack.Push(new DivideOperatorNode(left, right));
-                    break;
-                case OperatorEnum.Power:
-                    right = operandStack.Pop();
-                    left = operandStack.Pop();
-                    operandStack.Push(new PowerOperatorNode(left, right));
-                    break;
-                case OperatorEnum.FunctionPower: // special enum for power operators that appear immediately after a function keyword, Ex: sin^(2)(x)
-                    left = operandStack.Pop();
-                    right = operandStack.Pop();
-                    operandStack.Push(new PowerOperatorNode(left, right));
-                    break;
-                default:
-                    throw new AssertionFailedException("Failed to bind operator.");
-            }
-        }
-
-        private static void BindFunctionCall(Stack<KeywordFunctionNode> functionStack, Stack<AbstractSyntaxTree> operandStack)
-        {
-            AbstractSyntaxTree funcArg;
-
-            if (operandStack.Count != 0) 
-            {
-                funcArg = operandStack.Pop();
-            }
-            else
-            {
-                funcArg = new EmptyOperandNode();
-            }
-
-            operandStack.Push(new FunctionCallOperatorNode(functionStack.Pop(), funcArg));
-        }
-
-        /// <summary>
-        /// Continuously pop operator stack until a function call or opening parenthsis is encountered.
-        /// </summary>
-        /// <param name="unMatchedParenthesis">Reference to number of unmatched opening parenthesis, decremented when opening parenthesis is found.</param>
-        /// <param name="operatorStack">Stack of operators</param>
-        /// <param name="operandStack">Stack of operands</param>
-        /// /// <param name="functionStack">Stack of function keywords</param>
-        /// <returns>
-        /// A null string on success and a non-null string containing a error message on failure.
-        /// </returns>
-        private static string? TryAcceptClosingParenthesis(Stack<OperatorEnum> operatorStack, Stack<AbstractSyntaxTree> operandStack, Stack<KeywordFunctionNode> functionStack)
-        {
-            string? error = null;
-            OperatorEnum op;
+            var left = ParseTerm0();
 
             while (true)
             {
-                if ( (op = operatorStack.Peek()) != OperatorEnum.OperatorNone )
+                if (_nextToken!.Value == "+")
                 {
-                    if (op == OperatorEnum.OpeningParenthesis)
-                    {
-                        operatorStack.Pop();
-                        break;
-                    }
-                    else if (op == OperatorEnum.FunctionCall)
-                    {
-                        operatorStack.Pop();
-                        BindFunctionCall(functionStack, operandStack);
-
-                        if (operatorStack.Peek() == OperatorEnum.FunctionPower)
-                        {
-                            BindOperator(operatorStack.Pop(), operandStack);
-                        }
-
-                        break;
-                    }
-                    else if (op == OperatorEnum.ImplicitFunctionCall)
-                    {
-                        operatorStack.Pop();
-                        BindFunctionCall(functionStack, operandStack);
-
-                        if (operatorStack.Peek() == OperatorEnum.FunctionPower)
-                        {
-                            BindOperator(operatorStack.Pop(), operandStack);
-                        }
-                    }
-                    else if (op == OperatorEnum.FunctionPower)
-                    {
-                        error = "Unexpected: ')'";
-                        break;
-                    }
-                    else
-                    {
-                        BindOperator(operatorStack.Pop(), operandStack);
-                    }
+                    _nextToken = _scanner!.ScanToken();
+                    left = new PlusOperatorNode(left, ParseTerm0());
+                }
+                else if (_nextToken!.Value == "-")
+                {
+                    _nextToken = _scanner!.ScanToken();
+                    left = new MinusOperatorNode(left, ParseTerm0());
                 }
                 else
                 {
-                    // Error, closing parenthesis encountered with no matching opening parenthesis or function call parenthesis
-                    error = "Unexpected closing parenthsis: ')'";
                     break;
                 }
             }
 
-            return error;
+            return left;
         }
 
-        private static AbstractSyntaxTree CreateKeywordSymbolNode(KeywordEnum type)
+        private AbstractSyntaxTree ParseTerm0()
+        {
+            var left = ParseTerm1();
+
+            while (true)
+            {
+                if (_nextToken!.Value == "*")
+                {
+                    _nextToken = _scanner.ScanToken();
+                    left = new MultiplyOperatorNode(left, ParseTerm1());
+                }
+                else if (_nextToken.Value == "/")
+                {
+                    _nextToken = _scanner.ScanToken();
+                    left = new DivideOperatorNode(left, ParseTerm1());
+                }
+                else
+                {
+                    if (_nextToken.Value != ";")
+                    {
+                        if (_nextToken.Value != ")" && !Grammer.IsOperator(_nextToken.Value))
+                        {
+                            left = new MultiplyOperatorNode(left, ParseTerm1());
+                            continue;
+                        }
+                    }
+                    break;
+                }
+            }
+
+            return left;
+        }
+
+        private AbstractSyntaxTree ParseTerm1()
+        {
+            var left = ParseFactor();
+
+            if (_nextToken!.Value == "^")
+            {
+                _nextToken = _scanner.ScanToken();
+                left = new PowerOperatorNode(left, ParseTerm1());
+            }
+
+            return left;
+        }
+
+        private AbstractSyntaxTree ParseFactor()
+        {
+            if (_nextToken!.Value == "-")
+            {
+                _nextToken = _scanner.ScanToken();
+                return new NegationOperatorNode(ParseFactor());
+            }
+
+            switch (_nextToken.Type)
+            {
+                case TokenType.Numeric:
+                    string num = _nextToken.Value;
+                    _nextToken = _scanner.ScanToken();
+                    return new NumericNode(num);
+
+                case TokenType.Symbol:
+                    string symbol = _nextToken.Value;
+                    _nextToken = _scanner.ScanToken();
+                    return new SymbolNode(symbol);
+
+                case TokenType.Operator:
+                    return new EmptyOperandNode();
+
+                case TokenType.Function:
+                    return ParseFunction();
+
+                case TokenType.Keyword:    
+                    var keywordNode = CreateKeywordSymbolNode(_nextToken.Value);
+                    _nextToken = _scanner.ScanToken();
+                    return keywordNode;
+
+                default:
+                    // beginning of a expression
+                    if (_nextToken.Value == "(") 
+                    {
+                        _nextToken = _scanner!.ScanToken();
+                        var expr = ParseExpression();
+                        if (_nextToken.Value == ")") _nextToken = _scanner.ScanToken();
+
+                        return expr;
+                    }
+                    // end of tokenlist marker
+                    else if (_nextToken.Value == ";")
+                    {
+                        return new EmptyOperandNode();
+                    }
+                    // error
+                    else if (_nextToken.Value == ")")
+                    {
+                        throw new ParsingFailedException("Unexpected ')'");
+                    }
+                    // error
+                    else
+                    {
+                        throw new ParsingFailedException("Parsing failed.");
+                    }      
+            }
+        }
+
+        private AbstractSyntaxTree ParseFunction()
+        {
+            KeywordFunction func = CreateKeywordFunctionNode(_nextToken!.Value);
+            AbstractSyntaxTree args;
+            _nextToken = _scanner.ScanToken();
+
+            if (_nextToken.Value == "(")
+            {
+                _nextToken = _scanner.ScanToken();
+                args = ParseExpression();
+                // consume closing parenthesis if one exists
+                if (_nextToken.Value == ")") 
+                {
+                    _nextToken = _scanner.ScanToken();
+                    if (_nextToken.Value == "^") // if function is raised to a power, parse the power and build a function node with a power
+                    {
+                        _nextToken = _scanner.ScanToken();
+                        if (_nextToken.Value == ";")
+                        {
+                            return new FunctionCallNodeWithPower(func, args, new EmptyOperandNode());
+                        }
+                        else if (_nextToken.Value != "(")
+                        {
+                            throw new ParsingFailedException("Please use parenthesis for function powers! Ex: sin(x)^(5+1) instead of sin(x)^5+1");
+                        }
+
+                        _nextToken = _scanner.ScanToken(); // consume opening parenthesis
+                        AbstractSyntaxTree pow = ParseExpression();
+                        if (_nextToken.Value == ")") _nextToken = _scanner.ScanToken(); // consume closing parenthesis if one exists
+
+                        return new FunctionCallNodeWithPower(func, args, pow);
+                    }
+
+                }
+
+                return new FunctionCallNode(func, args);
+            }
+            else if (_nextToken.Value == "^")
+            {
+                // handle power expression first
+                // function power must be followed up by a opening parenthesis
+                _nextToken = _scanner.ScanToken();
+                if (_nextToken.Value == ";")
+                {
+                    return new FunctionCallNodeWithPower(func, new EmptyOperandNode(), new EmptyOperandNode());
+                }
+                else if ( _nextToken.Value != "(")  // power operator after a function must be followed up by a opening parenthesis
+                {
+                    throw new ParsingFailedException("Please use parenthesis for function powers! Ex: sin^(5)x instead of sin^5x");
+                }
+
+                // parse power expression
+                _nextToken = _scanner.ScanToken();
+                AbstractSyntaxTree power = ParseExpression();
+                if (_nextToken.Value == ")") _nextToken = _scanner.ScanToken(); // consume closing parenthesis if one exists
+
+
+                // handle function argument second
+                // function argument after power must start with a opening parenthesis
+                if (_nextToken.Value == ";")
+                {
+                    return new FunctionCallNodeWithPower(func, new EmptyOperandNode(), power);
+                }
+                else if (_nextToken.Value != "(")
+                {
+                    throw new ParsingFailedException("Function argument missing parenthesis!");
+                }
+                
+                // parse function argument
+                _nextToken = _scanner.ScanToken();
+                args = ParseExpression();
+                if (_nextToken.Value == ")") _nextToken = _scanner.ScanToken(); // consume closing parenthesis if one exists
+
+
+                return new FunctionCallNodeWithPower(func, args, power);
+            }
+            else if (_nextToken.Value == ";")
+            {
+                return new FunctionCallNode( func, new EmptyOperandNode() );
+            }
+            else
+            {
+                throw new ParsingFailedException("Function argument missing parenthesis!");
+            }
+        }
+
+
+        private static AbstractSyntaxTree CreateKeywordSymbolNode(string keyword)
         {
             AbstractSyntaxTree? node;
 
-            switch (type)
+            switch (Grammer.Keywords[keyword].Id)
             {
                 case KeywordEnum.Pi:
                     node = new KeywordPiNode();
@@ -475,11 +294,11 @@ namespace Symbolic_Algebra_Solver.Parsing
             return node!;
         }
 
-        private static KeywordFunctionNode CreateKeywordFunctionNode(KeywordEnum type)
+        private static KeywordFunction CreateKeywordFunctionNode(string keyword)
         {
-            KeywordFunctionNode? node;
+            KeywordFunction? node;
 
-            switch (type)
+            switch (Grammer.Keywords[keyword].Id)
             {
                 case KeywordEnum.Sin:
                     node = new KeywordSinNode();
@@ -494,7 +313,7 @@ namespace Symbolic_Algebra_Solver.Parsing
                     throw new AssertionFailedException("Creating a keyword node that is not a function!");
             }
 
-            return node!;
+            return node;
         }
 
     }
@@ -502,5 +321,10 @@ namespace Symbolic_Algebra_Solver.Parsing
     public class AssertionFailedException : Exception
     {
         public AssertionFailedException(string message) : base(message) { }
+    }
+
+    public class ParsingFailedException : Exception
+    {
+        public ParsingFailedException (string message) : base(message) { }
     }
 }

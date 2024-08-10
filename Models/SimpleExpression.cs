@@ -1,17 +1,27 @@
 ﻿using Prism.Commands;
 using Python.Runtime;
+using Symbolic_Algebra_Solver.Parsing;
 using Symbolic_Algebra_Solver.Utils;
 using Sympy;
+using System.Text;
 using System.Windows;
 
 namespace Symbolic_Algebra_Solver.Models
 {
     public class SimpleExpression : Observable
     {
-        public SimpleExpression() 
+        private Parser _parser;
+        private StringBuilder _builder;
+        private AbstractSyntaxTree? _expressionTree;
+        private bool _parseStatus; // true parse succeeded, else parsed input is invalid
+
+        public SimpleExpression()
         {
+            _parser = new Parser();
+            _builder = new StringBuilder();
+
             SimplifyCommand = new DelegateCommand(SimplifyExpression, CanSimplify);
-            FactorCommand   = new DelegateCommand(FactorExpression, CanFactor);
+            FactorCommand = new DelegateCommand(FactorExpression, CanFactor);
             LogCommand = new DelegateCommand(LogExpression, CanLog);
         }
 
@@ -34,11 +44,33 @@ namespace Symbolic_Algebra_Solver.Models
             set 
             {
                 _InputExpression = value;
+                if (value.Length > 0) 
+                {
+                    if (_parser.TryParse(value, out var result, out var status))
+                    {
+                        result.ToLatex(_builder);
+                        LatexInputExpression = _builder.ToString();
+                        _expressionTree = result;
 
-
+                        _builder.Clear();
+                        _parseStatus = true;
+                    }
+                    else
+                    {
+                        MessageBox.Show(status);
+                        _parseStatus = false;
+                    }
+                }
+                else
+                {
+                    LatexInputExpression = string.Empty;
+                    _parseStatus = false;
+                }
 
                 OnPropertyChanged();
                 SimplifyCommand.RaiseCanExecuteChanged();
+                FactorCommand.RaiseCanExecuteChanged();
+                LogCommand.RaiseCanExecuteChanged();
             }
         }
 
@@ -53,113 +85,61 @@ namespace Symbolic_Algebra_Solver.Models
             }
         }
 
-        /// <summary>
-        /// Check if expression has matching opening and closing parenthesis.
-        /// </summary>
-        static private bool CheckParenthesis(string input)
-        {
-            int opening = 0, rawOpening = 0;
-            int closing = 0, rawClosing = 0;
-            foreach (char c in input)
-            {
-                if (c == '(')
-                {
-                    opening++;
-                    rawOpening++;
-                }
-                else if (c == ')')
-                {
-                    if (closing < opening)
-                    {
-                        closing++;
-                    }
-                    rawClosing++;
-                }
-            }
-
-            return (opening == closing) && (rawOpening == rawClosing);
-        }
-
-        #region Expression Methods
-
-        public void Simplify()
-        {
-            if (!CheckParenthesis(_InputExpression))
-            {
-                MessageBox.Show("Missmatching parenthesis!");
-                return;
-            }
-
-            using (Py.GIL())
-            {
-                OutputExpression = SympyCS.simplify(_InputExpression);
-            }
-        }
-
-        public void Factor()
-        {
-            if (!CheckParenthesis(_InputExpression))
-            {
-                MessageBox.Show("Missmatching parenthesis!");
-                return;
-            }
-
-            using (Py.GIL())
-            {
-                OutputExpression = SympyCS.factor(_InputExpression);
-            }
-        }
-
-        public void Log()
-        {
-            if (!CheckParenthesis(_InputExpression))
-            {
-                MessageBox.Show("Mismatched parenthesis!");
-                return;
-            }
-
-            using (Py.GIL())
-            {
-                OutputExpression = SympyCS.log(_InputExpression);
-            }
-        }
-
-        #endregion
-
         #region ICommand Members
 
         public DelegateCommand SimplifyCommand { get; set; }
 
         private bool CanSimplify()
         {
-            return CheckParenthesis(_InputExpression) && _InputExpression.Length != 0;
+            return _parseStatus;
         }
         private void SimplifyExpression()
         {
-            Simplify();
+            StringBuilder strBuilder = new();
+            try
+            {
+                _expressionTree?.ToString(strBuilder);
+                MessageBox.Show(strBuilder.ToString());
+            }
+            catch (EmptyOperandException e)
+            {
+                MessageBox.Show(e.Message);
+                return;
+            }
+
+            using (Py.GIL())
+            {
+                OutputExpression = SympyCS.simplify(strBuilder.ToString());
+            }
         }
 
         public DelegateCommand FactorCommand { get; set; }
 
         private bool CanFactor()
         {
-            return true;
+            return _parseStatus;
         }
         private void FactorExpression()
         {
-            Factor();
+            using (Py.GIL())
+            {
+                OutputExpression = SympyCS.factor(_InputExpression);
+            }
         }
 
         public DelegateCommand LogCommand { get; set; }
 
         private bool CanLog()
         {
-            return true;
+            return _parseStatus;
         }
 
         private void LogExpression()
         {
-            Log();
+            using (Py.GIL())
+            {
+                OutputExpression = SympyCS.log(_InputExpression);
+            }
         }
 
         #endregion

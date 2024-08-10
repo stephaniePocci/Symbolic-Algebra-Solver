@@ -23,18 +23,15 @@ namespace Symbolic_Algebra_Solver.Parsing
 
     public enum OperatorEnum
     {
-        OperatorNone,
         Negation,
         Plus,
         Minus,
         Multiply,
         Divide,
         Power,
-        FunctionPower, // special enum for power operators that appear immediately after a function keyword, Ex: sin^(2)(x)
         FunctionCall,
         OpeningParenthesis,
         ClosingParenthesis,
-        ImplicitFunctionCall,
     }
 
     public enum KeywordEnum
@@ -57,6 +54,7 @@ namespace Symbolic_Algebra_Solver.Parsing
             { "pi",  new Keyword(id: Pi, isFunction: false) },
         });
 
+        // for now we assume operators are only single characters
         private static readonly HashSet<string> _operators = new HashSet<string>()
         {
             "-",
@@ -64,18 +62,12 @@ namespace Symbolic_Algebra_Solver.Parsing
             "*",
             "^",
             "/",
-            "(",
-            ")",
         };
 
         public static readonly ReadOnlyDictionary<OperatorEnum, Operator> Operators = new (new Dictionary<OperatorEnum, Operator>
         {
-            // Zero precedence has special meaning in that they are effectivly ignored when other operators are pushed onto the stack.
-            // In otherwords they will never be popped off when another operator is pushed onto the stack.
-
-            { OperatorNone,       new Operator(arity: OperatorArity.None, precedence: 0, associativity: OperatorAssociativity.None) },
-            { OpeningParenthesis, new Operator(arity: OperatorArity.None, precedence: 0, associativity: OperatorAssociativity.None) },
-            { ClosingParenthesis, new Operator(arity: OperatorArity.None, precedence: 0, associativity: OperatorAssociativity.None) },
+            //{ OpeningParenthesis, new Operator(arity: OperatorArity.None, precedence: 0, associativity: OperatorAssociativity.None) },
+            //{ ClosingParenthesis, new Operator(arity: OperatorArity.None, precedence: 0, associativity: OperatorAssociativity.None) },
 
             { Negation,      new Operator(arity: Unary,  precedence: 6, associativity: Right) },
             { Plus,          new Operator(arity: Binary, precedence: 1, associativity: Left) },
@@ -83,10 +75,7 @@ namespace Symbolic_Algebra_Solver.Parsing
             { Multiply,      new Operator(arity: Binary, precedence: 2, associativity: Left) },
             { Divide,        new Operator(arity: Binary, precedence: 2, associativity: Left) },
             { Power,         new Operator(arity: Binary, precedence: 3, associativity: Right) },
-            { FunctionPower, new Operator(arity: Binary, precedence: 3, associativity: Right) },
-            { FunctionCall,  new Operator(arity: Binary, precedence: 0, associativity: Left) },
-            { ImplicitFunctionCall,  new Operator(arity: Binary, precedence: 0, associativity: Left) },
-
+            //{ FunctionCall,  new Operator(arity: Binary, precedence: 0, associativity: Left) },
         });
 
         #region Class Methods
@@ -108,14 +97,24 @@ namespace Symbolic_Algebra_Solver.Parsing
             }
         }
 
-        public static bool IsOperator(string matchOperator)
+        /// <summary>
+        /// Check if input string is a operator.
+        /// </summary>
+        /// <param name="match">String to check</param>
+        /// <returns>True ifstring is a operator, else false.</returns>
+        public static bool IsOperator(string match)
         {
-            return _operators.Contains(matchOperator);
+            return _operators.Contains(match);
         }
 
-        public static bool IsOperator(char matchOperator)
+        /// <summary>
+        /// Check if input char is a operator.
+        /// </summary>
+        /// <param name="match">Char to match</param>
+        /// <returns>True if charis a operator, else false.</returns>
+        public static bool IsOperator(char match)
         {
-            return _operators.Contains(matchOperator.ToString());
+            return _operators.Contains(match.ToString());
         }
 
         #endregion

@@ -5,20 +5,12 @@ using System.Text.RegularExpressions;
 
 namespace Symbolic_Algebra_Solver.Parsing
 {
-    public static partial class Tokenizer
+    public partial class Tokenizer
     {
         private static readonly ReadOnlyDictionary<string, string[]> _keywordDictionary;
 
         [GeneratedRegex(@"\s+")]
         private static partial Regex _MatchWhiteSpace();
-
-        private enum TokenState
-        {
-            TsIsDigit,
-            TsIsOperator,
-            TsIsSymbol,
-            TsInvalidCharacter,
-        }
 
         /// <summary>
         /// Static constructor to initialize a dictionary of keywords.
@@ -50,6 +42,10 @@ namespace Symbolic_Algebra_Solver.Parsing
             _keywordDictionary = new ReadOnlyDictionary<string, string[]>(keywordDictionary);
         }
 
+        private List<Token> _tokenList = new();
+        private StringBuilder _builder = new();
+        private int _position = 0;
+
         /// <summary>
         /// Parse a input expression into a list of tokens.
         /// </summary>
@@ -60,11 +56,12 @@ namespace Symbolic_Algebra_Solver.Parsing
         /// True on success, <paramref name="tokenList"/> will contain list of tokens and <paramref name="error"/> will be null.
         /// False on fail, <paramref name="tokenList"/> will be null and <paramref name="error"/> will contain a error message.
         /// </returns>
-        public static bool TryTokenize(string input, [NotNullWhen(true)] out List<string>? tokenList, [NotNullWhen(false)] out string? error)
+        public bool TryTokenize(string input, [NotNullWhen(false)]out string? error)
         {
             error = null;
-            StringBuilder builder = new StringBuilder();
-            tokenList = new List<string>();
+            _builder.Clear();
+            _tokenList.Clear();
+            _position = 0;
 
             input = ReplaceWhiteSpace(input, "");
             int index = 0;
@@ -75,15 +72,19 @@ namespace Symbolic_Algebra_Solver.Parsing
 
                 if (Char.IsDigit(c) || c == '.')
                 {
-                    error = TokenizeNumeric(ref index, input, tokenList, builder);
+                    error = TokenizeNumeric(ref index, input);
                 }
                 else if (Char.IsLetter(c))
                 {
-                    TokenizeSymbol(ref index, input, tokenList, builder);
+                    TokenizeSymbol(ref index, input);
                 }
-                else if (Grammer.IsOperator(input[index]))
+                else if (Grammer.IsOperator(c))
                 {
-                    TokenizeOperator(ref index, input, tokenList);
+                    TokenizeOperator(ref index, input);
+                }
+                else if (c == '(' || c == ')')
+                {
+                    _tokenList!.Add(new Token(input[index++].ToString(), TokenType.None));
                 }
                 else
                 {
@@ -93,13 +94,27 @@ namespace Symbolic_Algebra_Solver.Parsing
 
                 if (error != null)
                 {
+                    _tokenList.Clear();
+                    _position = 0;
                     return false;
                 }
             }
 
-            tokenList.Add(";"); // semi colon to indicate end of token list
+            _tokenList.Add(new Token(";", TokenType.None)); // semi colon to mark end of token list
 
             return true;
+        }
+
+        public Token ScanToken()
+        {
+            if (_tokenList != null && _position < _tokenList.Count)
+            {
+                return _tokenList[_position++];
+            }
+            else
+            {
+                return new Token(";", TokenType.None);
+            }
         }
 
         private static string ReplaceWhiteSpace(string input, string replacement) 
@@ -114,15 +129,13 @@ namespace Symbolic_Algebra_Solver.Parsing
         /// For example given the string "35+10" and a starting index of 0; 
         /// this function will continuously process each character until a non-digit character is encountered.
         /// In this case the character '+' is the first non-digit character so tokenizing ends here and the ouput
-        /// "35" is appended to <paramref name="tokenList"/>. Non-digit characters also include white-space.
+        /// "35" is appended to the token list. Non-digit characters also include white-space.
         /// </remarks>
         /// <param name="index">Reference to starting index to begin tokenizing</param>
         /// <param name="input">Input string</param>
-        /// <param name="tokenList">List of tokens that the processed token will be appended to.</param>
-        /// <param name="builder">StringBuilder object used to build the token. The StringBuilder is cleared first before it is used.</param>
-        private static string? TokenizeNumeric(ref int index, string input, List<string> tokenList, StringBuilder builder)
+        private string? TokenizeNumeric(ref int index, string input)
         {   
-            builder.Clear();
+            _builder.Clear();
             bool isFloat = false;
 
             // a decimal followed by digits is a valid numeric, Ex: .3 == 0.3
@@ -130,9 +143,9 @@ namespace Symbolic_Algebra_Solver.Parsing
             {
                 if (index + 1 < input.Length && Char.IsDigit(input[index + 1])) 
                 {
-                    builder.Append('0');            // append add leading zero
-                    builder.Append(input[index++]); // append decimal point
-                    builder.Append(input[index++]); // append the digit following the decimal point
+                    _builder.Append('0');            // append add leading zero
+                    _builder.Append(input[index++]); // append decimal point
+                    _builder.Append(input[index++]); // append the digit following the decimal point
                     isFloat = true;
                 }
                 else
@@ -144,12 +157,12 @@ namespace Symbolic_Algebra_Solver.Parsing
             // check possible invalid numeric
             else if (input[index] == '0')
             {
-                builder.Append(input[index++]);
+                _builder.Append(input[index++]);
 
                 // a numeric starting with zero is invalid unless followed up by a decimal, Ex: 05 is invalid but 0.5 is valid
                 if ( index < input.Length && input[index] == '.' )
                 {
-                    builder.Append(input[index++]);
+                    _builder.Append(input[index++]);
                     isFloat = true;
                 }
                 else
@@ -164,12 +177,12 @@ namespace Symbolic_Algebra_Solver.Parsing
 
             while ( index < input.Length && Char.IsDigit(input[index]) ) 
             {
-                builder.Append(input[index++]);
+                _builder.Append(input[index++]);
 
                 // decimal point is only added once per numeric
                 if ( !isFloat && index < input.Length && input[index] == '.' )
                 {
-                    builder.Append(input[index++]);
+                    _builder.Append(input[index++]);
                     isFloat = true;
                 }
             }
@@ -177,25 +190,22 @@ namespace Symbolic_Algebra_Solver.Parsing
             // if float has a trailing decimal point remove it, Ex: 5. is simply 5
             if (isFloat && input[index - 1] == '.') 
             {
-                builder.Remove(index - 1, 1);    
+                _builder.Remove(index - 1, 1);    
             }
 
-            tokenList.Add(builder.ToString());
-            //ImplicitMultiplication(index, input, tokenList);
+            _tokenList!.Add( new Token(_builder.ToString(), TokenType.Numeric) );
 
             return null;
         }
 
         /// <summary>
-        /// Tokenizes a symbol or keyword from <paramref name="input"/> and appends the token to the <paramref name="tokenList"/>.
+        /// Tokenizes a symbol or keyword from <paramref name="input"/> and appends the token to the token list.
         /// </summary>
         /// <param name="index">Reference to starting index to begin tokenizing</param>
         /// <param name="input">Input string</param>
-        /// <param name="tokenList">List of tokens that the processed token will be appended to.</param>
-        /// <param name="builder">StringBuilder object used to build the token. The StringBuilder is cleared first before it is used.</param>
-        private static void TokenizeSymbol(ref int index, string input, List<string> tokenList, StringBuilder builder)
+        private void TokenizeSymbol(ref int index, string input)
         {
-            builder.Clear();
+            _builder.Clear();
 
             string? foundKeyword = null;
             if ( _keywordDictionary.TryGetValue(input[index].ToString().ToLower(), out var values) ) // check if symbol is possibly a starting character of a keyword
@@ -212,18 +222,16 @@ namespace Symbolic_Algebra_Solver.Parsing
                         {
                             foundKeyword = keyword;
 
-                            while (index <= endIndex)
-                            {
-                                builder.Append(input[index]);
-                                index++;
-                            }
-                            
-                            tokenList.Add(builder.ToString().ToLower());
+                            index = endIndex + 1;
 
-                            /*if (!Grammer.Keywords[foundKeyword].IsFunction)
+                            if (Grammer.IsKeywordFunction(foundKeyword))
                             {
-                                ImplicitMultiplication(index, input, tokenList);
-                            }*/
+                                _tokenList!.Add(new Token(foundKeyword, TokenType.Function));
+                            }
+                            else
+                            {
+                                _tokenList!.Add( new Token(foundKeyword, TokenType.Keyword));
+                            }
 
                             break; // exit loop once matching keyword is found
                         }
@@ -234,9 +242,8 @@ namespace Symbolic_Algebra_Solver.Parsing
             // no keyword was found so just append the single character symbol as a token
             if (foundKeyword == null)
             {
-                builder.Append(input[index++]);
-                tokenList.Add( builder.ToString() );
-               // ImplicitMultiplication(index, input, tokenList);
+                _builder.Append(input[index++]);
+                _tokenList!.Add( new Token(_builder.ToString(), TokenType.Symbol) );
             }  
         }
 
@@ -245,30 +252,32 @@ namespace Symbolic_Algebra_Solver.Parsing
         /// </summary>
         /// <param name="index">Reference to starting index to begin tokenizing</param>
         /// <param name="input">Input string</param>
-        /// <param name="tokenList">List of tokens that the processed token will be appended to.</param>
-        private static void TokenizeOperator(ref int index, string input, List<string> tokenList)
+        private void TokenizeOperator(ref int index, string input)
         {
             char token = input[index++];
-            tokenList.Add( token.ToString() );
-
-            // if the added character is a closing parenthesis, check for implicit multiplication. Ex: (x)5 == x * 5
-            /*if (token == ')')
-            {
-                ImplicitMultiplication(index, input, tokenList);
-            }*/
+            _tokenList!.Add( new Token(token.ToString(), TokenType.Operator) );
         }
+    }
 
-        private static void ImplicitMultiplication(int index, string input, List<string> tokenList)
+    public enum TokenType
+    {
+        Numeric,
+        Symbol,
+        Operator,
+        Function,
+        Keyword,
+        None,
+    }
+
+    public class Token 
+    {
+        public readonly string Value;
+        public readonly TokenType Type;
+
+        public Token(string value, TokenType type)
         {
-            if (index < input.Length)
-            {
-                char c = input[index];
-
-                if (Char.IsLetterOrDigit(c) || c == '(')
-                {
-                    tokenList.Add("*");
-                }
-            }
+            Type = type;
+            Value = value;
         }
     }
 }
