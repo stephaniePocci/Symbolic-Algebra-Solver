@@ -1,46 +1,27 @@
 ﻿using System.Collections.ObjectModel;
-using static Symbolic_Algebra_Solver.Parsing.OperatorAssociativity;
-using static Symbolic_Algebra_Solver.Parsing.OperatorEnum;
-using static Symbolic_Algebra_Solver.Parsing.OperatorArity;
+using System.Diagnostics.CodeAnalysis;
 using static Symbolic_Algebra_Solver.Parsing.KeywordEnum;
 
 namespace Symbolic_Algebra_Solver.Parsing
 {
     #region Enums
-    public enum OperatorAssociativity
-    {
-        Left,
-        None,
-        Right,
-    }
-
-    public enum OperatorArity
-    {
-        Binary,
-        Unary,
-        None,
-    }
-
-    public enum OperatorEnum
-    {
-        Negation,
-        Plus,
-        Minus,
-        Multiply,
-        Divide,
-        Power,
-        FunctionCall,
-        OpeningParenthesis,
-        ClosingParenthesis,
-    }
 
     public enum KeywordEnum
     {
         Sin,
         Cos,
         Tan,
+        Arcsin,
+        Arccos,
+        Arctan,
+
+        Alpha,
+        Beta,
+        Gamma,
+
         Pi,
     }
+
     #endregion
 
     public static class Grammer
@@ -50,6 +31,13 @@ namespace Symbolic_Algebra_Solver.Parsing
             { "sin", new Keyword(id: Sin, isFunction: true) },
             { "cos", new Keyword(id: Cos, isFunction: true) },
             { "tan", new Keyword(id: Tan, isFunction: true) },
+            { "arcsin", new Keyword(id: Arcsin, isFunction: true) },
+            { "arccos", new Keyword(id: Arccos, isFunction: true) },
+            { "arctan", new Keyword(id: Arctan, isFunction: true) },
+
+            { "alpha",  new Keyword(id: Alpha, isFunction: false) },
+            { "beta",   new Keyword(id: Beta, isFunction: false) },
+            { "gamma",  new Keyword(id: Gamma, isFunction: false) },
 
             { "pi",  new Keyword(id: Pi, isFunction: false) },
         });
@@ -64,21 +52,28 @@ namespace Symbolic_Algebra_Solver.Parsing
             "/",
         };
 
-        public static readonly ReadOnlyDictionary<OperatorEnum, Operator> Operators = new (new Dictionary<OperatorEnum, Operator>
+        private static readonly Dictionary<char, string> _specialSymbols = new Dictionary<char, string>()
         {
-            //{ OpeningParenthesis, new Operator(arity: OperatorArity.None, precedence: 0, associativity: OperatorAssociativity.None) },
-            //{ ClosingParenthesis, new Operator(arity: OperatorArity.None, precedence: 0, associativity: OperatorAssociativity.None) },
+            { '\u03B1', "\\alpha" }, // α
+            { '\u03B2', "\\beta" },  // ß
+            { '\u03B3', "\\gamma" }, // γ
+            { '\u03C0', "\\pi" }     // π
+        };
 
-            { Negation,      new Operator(arity: Unary,  precedence: 6, associativity: Right) },
-            { Plus,          new Operator(arity: Binary, precedence: 1, associativity: Left) },
-            { Minus,         new Operator(arity: Binary, precedence: 1, associativity: Left) },
-            { Multiply,      new Operator(arity: Binary, precedence: 2, associativity: Left) },
-            { Divide,        new Operator(arity: Binary, precedence: 2, associativity: Left) },
-            { Power,         new Operator(arity: Binary, precedence: 3, associativity: Right) },
-            //{ FunctionCall,  new Operator(arity: Binary, precedence: 0, associativity: Left) },
-        });
+        public static bool IsSpecialSymbol(char matchChar, [MaybeNullWhen(false)] out string symbolValue)
+        {
+            if (_specialSymbols.TryGetValue(matchChar, out string? value))
+            {
+                symbolValue = value;
 
-        #region Class Methods
+                return true;
+            }
+            else
+            {
+                symbolValue = null;
+                return false;
+            }
+        }
 
         public static bool IsKeyword(string matchKeyword)
         {
@@ -115,28 +110,6 @@ namespace Symbolic_Algebra_Solver.Parsing
         public static bool IsOperator(char match)
         {
             return _operators.Contains(match.ToString());
-        }
-
-        #endregion
-    }
-
-    public class Operator 
-    {
-        public readonly OperatorArity Arity;
-        public readonly int Precedence;
-        public readonly OperatorAssociativity Associativity;
-
-        /// <summary>
-        /// Object that represent either a binary or unary operator.
-        /// </summary>
-        /// <param name="arity">Arity of the operator which can be unary, binary, or none.</param>
-        /// <param name="precedence">Operator precedence.</param>
-        /// <param name="associativity">Associativity of the operator, left, right, or none.</param>
-        public Operator(OperatorArity arity, int precedence, OperatorAssociativity associativity)
-        {
-            Arity = arity;
-            Precedence = precedence;
-            Associativity = associativity;
         }
     }
 

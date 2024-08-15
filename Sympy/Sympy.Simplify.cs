@@ -1,4 +1,5 @@
 ﻿using Python.Runtime;
+using Symbolic_Algebra_Solver.Parsing;
 
 namespace Sympy
 {
@@ -33,13 +34,7 @@ namespace Sympy
 
         public static string latex(PyObject input)
         {
-            PyObject outExpr = sympyCore.latex(input);
-            return outExpr.ToString()!;
-        }
-
-        public static string latex(string input) 
-        {
-            PyObject outExpr = sympyCore.latex(parse_expr(input), order: "none");
+            PyObject outExpr = sympyCore.latex(input, inv_trig_style: "full");
             return outExpr.ToString()!;
         }
 

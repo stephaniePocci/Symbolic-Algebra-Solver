@@ -2,7 +2,6 @@
 using System.IO;
 using System.Windows;
 
-
 namespace Symbolic_Algebra_Solver
 {
     /// <summary>

@@ -31,6 +31,13 @@ namespace Symbolic_Algebra_Solver.Parsing
         /// <returns>True on parsing success, else false</returns>
         public bool TryParse(string input, [NotNullWhen(true)] out AbstractSyntaxTree? result, [NotNullWhen(false)] out string? status)
         {
+            if (input == string.Empty)
+            {
+                result = null;
+                status = "Cannot parse empty string!";
+                return false;
+            }
+
             if (!_scanner.TryTokenize(input, out status))
             {
                 result = null;
@@ -104,6 +111,7 @@ namespace Symbolic_Algebra_Solver.Parsing
                 }
                 else
                 {
+                    // handle possible implicit multiplication Ex: 5x == 5*x
                     if (_nextToken.Value != ";")
                     {
                         if (_nextToken.Value != ")" && !Grammer.IsOperator(_nextToken.Value))
@@ -284,6 +292,15 @@ namespace Symbolic_Algebra_Solver.Parsing
 
             switch (Grammer.Keywords[keyword].Id)
             {
+                case KeywordEnum.Alpha:
+                    node = new KeywordAlphaNode();
+                    break;
+                case KeywordEnum.Beta:
+                    node = new KeywordBetaNode();
+                    break;
+                case KeywordEnum.Gamma:
+                    node = new KeywordGammaNode();
+                    break;
                 case KeywordEnum.Pi:
                     node = new KeywordPiNode();
                     break;
@@ -308,6 +325,15 @@ namespace Symbolic_Algebra_Solver.Parsing
                     break;
                 case KeywordEnum.Tan:
                     node = new KeywordTanNode();
+                    break;
+                case KeywordEnum.Arcsin:
+                    node = new KeywordArcSinNode();
+                    break;
+                case KeywordEnum.Arccos:
+                    node = new KeywordArcCosNode();
+                    break;
+                case KeywordEnum.Arctan:
+                    node = new KeywordArcTanNode();
                     break;
                 default:
                     throw new AssertionFailedException("Creating a keyword node that is not a function!");

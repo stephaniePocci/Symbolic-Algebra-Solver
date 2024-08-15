@@ -72,7 +72,7 @@ namespace Symbolic_Algebra_Solver.Parsing
                 {
                     error = TokenizeNumeric(ref index, input);
                 }
-                else if (Char.IsLetter(c))
+                else if (Char.IsAsciiLetter(c))
                 {
                     TokenizeSymbol(ref index, input);
                 }
@@ -82,12 +82,20 @@ namespace Symbolic_Algebra_Solver.Parsing
                 }
                 else if (c == '(' || c == ')')
                 {
-                    _tokenList!.Add(new Token(input[index++].ToString(), TokenType.None));
+                    _tokenList.Add(new Token(input[index++].ToString(), TokenType.None));
                 }
                 else
                 {
-                    // unrecognized token/character
-                    error = $"Invalid character: '{c}'";
+                    if (Grammer.IsSpecialSymbol(c, out var value))
+                    {
+                        _tokenList.Add(new Token(value, TokenType.Symbol));
+                        ++index;
+                    }
+                    else
+                    {
+                        // unrecognized token/character
+                        error = $"Invalid character: '{c}'";
+                    }
                 }
 
                 if (error != null)
@@ -117,8 +125,9 @@ namespace Symbolic_Algebra_Solver.Parsing
         {
             if (_tokenList == null)
             {
-                throw new AssertionFailedException("Scaning null token failure!");
+                throw new AssertionFailedException("Scaning null token list failure!");
             }
+
             if (_position < _tokenList.Count)
             {
                 return _tokenList[_position++];
@@ -126,6 +135,23 @@ namespace Symbolic_Algebra_Solver.Parsing
             else
             {
                 return _tokenList[_tokenList.Count - 1];
+            }
+        }
+
+        public Token GetPrevToken()
+        {
+            if (_tokenList == null)
+            {
+                throw new AssertionFailedException("Null token list failure!");
+            }
+
+            if (_position - 1 >= 0)
+            {
+                return _tokenList[_position - 1];
+            }
+            else
+            {
+                return _tokenList[0];
             }
         }
 
@@ -267,7 +293,17 @@ namespace Symbolic_Algebra_Solver.Parsing
         private void TokenizeOperator(ref int index, string input)
         {
             char token = input[index++];
-            _tokenList!.Add( new Token(token.ToString(), TokenType.Operator) );
+
+            // double multiply means power operator
+            if (token == '*' && index < input.Length && input[index] == '*')
+            {
+                _tokenList.Add(new Token("^", TokenType.Operator));
+                ++index;
+            }
+            else
+            {
+                _tokenList!.Add( new Token(token.ToString(), TokenType.Operator) );
+            }
         }
     }
 

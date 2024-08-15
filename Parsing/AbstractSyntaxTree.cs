@@ -4,10 +4,22 @@ using System.Text;
 
 namespace Symbolic_Algebra_Solver.Parsing
 {
-    #region Abstract
+    public enum NodeType
+    {
+        Numeric,
+        NonNumeric, // symbols, keywords, functions
+        Operator, 
+    }
 
     public abstract class AbstractSyntaxTree 
     {
+        public readonly NodeType Type;
+
+        public AbstractSyntaxTree(NodeType type)
+        {
+            Type = type;
+        }
+
         public abstract void ToLatex(StringBuilder builder);
         public abstract void ToString(StringBuilder builder);
     }
@@ -16,7 +28,7 @@ namespace Symbolic_Algebra_Solver.Parsing
     {
         public readonly AbstractSyntaxTree Child;
 
-        public UnaryOperatorNode(AbstractSyntaxTree child)
+        public UnaryOperatorNode(AbstractSyntaxTree child) : base(NodeType.Operator)
         {
             Child = child;
         }
@@ -27,14 +39,12 @@ namespace Symbolic_Algebra_Solver.Parsing
         public readonly AbstractSyntaxTree Left;
         public readonly AbstractSyntaxTree Right;
 
-        public BinaryOperatorNode(AbstractSyntaxTree left, AbstractSyntaxTree right)
+        public BinaryOperatorNode(AbstractSyntaxTree left, AbstractSyntaxTree right) : base(NodeType.Operator)
         {
             Left = left;
             Right = right;
         }
     }
-
-    #endregion
 
     #region Operators
 
@@ -45,13 +55,13 @@ namespace Symbolic_Algebra_Solver.Parsing
         public override void ToLatex(StringBuilder builder)
         {
             builder.Append('-');
-            this.Child.ToLatex(builder);
+            Child.ToLatex(builder);
         }
 
         public override void ToString(StringBuilder builder)
         {
             builder.Append('-');
-            this.Child.ToString(builder);
+            Child.ToString(builder);
         }
     }
 
@@ -61,9 +71,9 @@ namespace Symbolic_Algebra_Solver.Parsing
 
         public override void ToLatex(StringBuilder builder)
         {
-            this.Left.ToLatex(builder);
+            Left.ToLatex(builder);
             builder.Append('+');
-            this.Right.ToLatex(builder);
+            Right.ToLatex(builder);
         }
 
         public override void ToString(StringBuilder builder)
@@ -71,7 +81,7 @@ namespace Symbolic_Algebra_Solver.Parsing
             builder.Append('(');
             this.Left.ToString(builder);
             builder.Append('+');
-            this.Right.ToString(builder);
+            Right.ToString(builder);
             builder.Append(')');
         }
     }
@@ -82,17 +92,17 @@ namespace Symbolic_Algebra_Solver.Parsing
 
         public override void ToLatex(StringBuilder builder)
         {
-            this.Left.ToLatex(builder);
+            Left.ToLatex(builder);
             builder.Append('-');
-            this.Right.ToLatex(builder);
+            Right.ToLatex(builder);
         }
 
         public override void ToString(StringBuilder builder)
         {
             builder.Append('(');
-            this.Left.ToString(builder);
+            Left.ToString(builder);
             builder.Append('-');
-            this.Right.ToString(builder);
+            Right.ToString(builder);
             builder.Append(')');
         }
     }
@@ -103,17 +113,82 @@ namespace Symbolic_Algebra_Solver.Parsing
 
         public override void ToLatex(StringBuilder builder)
         {
-            this.Left.ToLatex(builder);
-            builder.Append(" \\cdot ");
-            this.Right.ToLatex(builder);
+            var leftType = Left.GetType();
+            var rightType = Right.GetType();
+            string leftStr, rightStr;
+
+            // enclose left/right operands in parenthesis if they are plus or minus operator nodes
+
+            if (leftType == typeof(PlusOperatorNode) || leftType == typeof(MinusOperatorNode))
+            {
+                builder.Append("\\left(");
+                Left.ToLatex(builder);
+                builder.Append("\\right)");
+            }
+            else
+            {
+                Left.ToLatex(builder);
+            }
+
+            leftStr = builder.ToString();
+            builder.Clear();
+
+            if (rightType == typeof(PlusOperatorNode) || rightType == typeof(MinusOperatorNode))
+            {
+                builder.Append("\\left(");
+                Right.ToLatex(builder);
+                builder.Append("\\right)");
+            }
+            else
+            {
+                Right.ToLatex(builder);
+            }
+
+            rightStr = builder.ToString();
+            builder.Clear();
+
+            // handle if the muliplication should be explicitly printed or not for a less verbose latex expression
+            builder.Append(leftStr);
+            if (leftType == typeof(DivideOperatorNode) || rightType == typeof(DivideOperatorNode))
+            {
+                builder.Append(" \\cdot ");
+            }
+            else if (Left.Type == NodeType.Numeric)
+            {
+                if (Right.Type == NodeType.Numeric)
+                {
+                    builder.Append(" \\cdot ");
+                }
+                else if (rightType == typeof(MultiplyOperatorNode))
+                {
+                    MultiplyOperatorNode temp = (MultiplyOperatorNode) Right;
+                    if (temp.Left.Type == NodeType.Numeric)
+                    {
+                        builder.Append(" \\cdot ");
+                    }
+                }
+                else if (rightType == typeof(PowerOperatorNode))
+                {
+                    PowerOperatorNode temp = (PowerOperatorNode) Right;
+                    if (temp.Left.Type == NodeType.Numeric)
+                    {
+                        builder.Append(" \\cdot ");
+                    }
+                }
+            }
+            else if (Right.Type == NodeType.Numeric)
+            {
+                builder.Append(" \\cdot ");
+            }
+            builder.Append(rightStr);
         }
 
         public override void ToString(StringBuilder builder)
         {
             builder.Append('(');
-            this.Left.ToString(builder);
+            Left.ToString(builder);
             builder.Append('*');
-            this.Right.ToString(builder);
+            Right.ToString(builder);
             builder.Append(')');
         }
     }
@@ -127,20 +202,20 @@ namespace Symbolic_Algebra_Solver.Parsing
             builder.Append("\\frac");
 
             builder.Append('{');
-            this.Left.ToLatex(builder);
+            Left.ToLatex(builder);
 
             builder.Append("}{");
 
-            this.Right.ToLatex(builder);
+            Right.ToLatex(builder);
             builder.Append('}');
         }
 
         public override void ToString(StringBuilder builder)
         {
             builder.Append('(');
-            this.Left.ToString(builder);
+            Left.ToString(builder);
             builder.Append('/');
-            this.Right.ToString(builder);
+            Right.ToString(builder);
             builder.Append(')');
         }
     }
@@ -151,23 +226,34 @@ namespace Symbolic_Algebra_Solver.Parsing
 
         public override void ToLatex(StringBuilder builder)
         {
-            builder.Append('{');
-            this.Left.ToLatex(builder);
-            builder.Append('}');
+            if (Left.Type == NodeType.Operator)
+            {
+                builder.Append("\\left(");
+                builder.Append('{');
+                Left.ToLatex(builder);
+                builder.Append('}');
+                builder.Append("\\right)");
+            }
+            else
+            {
+                builder.Append('{');
+                Left.ToLatex(builder);
+                builder.Append('}');
+            }
 
             builder.Append('^');
 
             builder.Append('{');
-            this.Right.ToLatex(builder);
+            Right.ToLatex(builder);
             builder.Append('}');
         }
 
         public override void ToString(StringBuilder builder)
         {
             builder.Append('(');
-            this.Left.ToString(builder);
+            Left.ToString(builder);
             builder.Append('^');
-            this.Right.ToString(builder);
+            Right.ToString(builder);
             builder.Append(')');
         }
     }
@@ -178,18 +264,18 @@ namespace Symbolic_Algebra_Solver.Parsing
 
         public override void ToLatex(StringBuilder builder)
         {
-            this.Left.ToLatex(builder); // print function
+            Left.ToLatex(builder); // print function
             builder.Append("\\left(");
-            this.Right.ToLatex(builder); // print function argument
+            Right.ToLatex(builder); // print function argument
             builder.Append("\\right)");
         }
 
         public override void ToString(StringBuilder builder)
         {
             builder.Append('(');
-            this.Left.ToString(builder);
+            Left.ToString(builder);
             builder.Append('(');
-            this.Right.ToString(builder);
+            Right.ToString(builder);
             builder.Append(')');
             builder.Append(')');
         }
@@ -202,36 +288,36 @@ namespace Symbolic_Algebra_Solver.Parsing
 
         public FunctionCallNodeWithPower(KeywordFunction func, AbstractSyntaxTree args, AbstractSyntaxTree functionPower) : base (func, args)
         {
-            this.FunctionPower = functionPower;
+            FunctionPower = functionPower;
         }
 
         public override void ToLatex(StringBuilder builder)
         {
-            this.Left.ToLatex(builder); // print function
+            Left.ToLatex(builder); // print function
 
             builder.Append('^');
 
             builder.Append('{');
-            this.FunctionPower.ToLatex(builder); // print power
+            FunctionPower.ToLatex(builder); // print power
             builder.Append('}');
 
             builder.Append("\\left(");
-            this.Right.ToLatex(builder); // print function argument
+            Right.ToLatex(builder); // print function argument
             builder.Append("\\right)");
         }
 
         public override void ToString(StringBuilder builder)
         {
             builder.Append('(');
-            this.Left.ToString(builder); // print function
+            Left.ToString(builder); // print function
             builder.Append('(');
-            this.Right.ToString(builder); // print argument
+            Right.ToString(builder); // print argument
             builder.Append(')');
             builder.Append(')');
 
             builder.Append("^");
             builder.Append('(');
-;           this.FunctionPower.ToString(builder); // print power
+;           FunctionPower.ToString(builder); // print power
             builder.Append(')');
         }
     }
@@ -242,7 +328,7 @@ namespace Symbolic_Algebra_Solver.Parsing
 
     public abstract class KeywordFunction :AbstractSyntaxTree
     {
-
+        public KeywordFunction() : base(NodeType.NonNumeric) { }
     }
 
     public class KeywordSinNode : KeywordFunction
@@ -262,8 +348,6 @@ namespace Symbolic_Algebra_Solver.Parsing
 
     public class KeywordCosNode : KeywordFunction
     {
-        public KeywordCosNode() { }
-
         public override void ToLatex(StringBuilder builder)
         {
             builder.Append("\\cos");
@@ -277,8 +361,6 @@ namespace Symbolic_Algebra_Solver.Parsing
 
     public class KeywordTanNode : KeywordFunction
     {
-        public KeywordTanNode() { }
-
         public override void ToLatex(StringBuilder builder)
         {
             builder.Append("\\tan");
@@ -290,11 +372,93 @@ namespace Symbolic_Algebra_Solver.Parsing
         }
     }
 
+    public class KeywordArcSinNode : KeywordFunction
+    {
+        public override void ToLatex(StringBuilder builder)
+        {
+            builder.Append("\\arcsin");
+        }
+
+        public override void ToString(StringBuilder builder)
+        {
+            builder.Append("asin");
+        }
+    }
+
+    public class KeywordArcCosNode : KeywordFunction
+    {
+        public override void ToLatex(StringBuilder builder)
+        {
+            builder.Append("\\arccos");
+        }
+
+        public override void ToString(StringBuilder builder)
+        {
+            builder.Append("acos");
+        }
+    }
+    public class KeywordArcTanNode : KeywordFunction
+    {
+        public override void ToLatex(StringBuilder builder)
+        {
+            builder.Append("\\arctan");
+        }
+
+        public override void ToString(StringBuilder builder)
+        {
+            builder.Append("atan");
+        }
+    }
+
     #endregion
 
     #region KeywordSymbols
 
-    public class KeywordPiNode : AbstractSyntaxTree
+    public abstract class KeywordSymbol : AbstractSyntaxTree
+    {
+        public KeywordSymbol() : base(NodeType.NonNumeric) { }
+    }
+
+    public class KeywordAlphaNode : KeywordSymbol
+    {
+        public override void ToLatex(StringBuilder builder)
+        {
+            builder.Append("\\alpha");
+        }
+
+        public override void ToString(StringBuilder builder)
+        {
+            builder.Append('α'); // u03B1
+        }
+    }
+
+    public class KeywordBetaNode : KeywordSymbol
+    {
+        public override void ToLatex(StringBuilder builder)
+        {
+            builder.Append("\\beta"); // u03B2
+        }
+
+        public override void ToString(StringBuilder builder)
+        {
+            builder.Append('ß');
+        }
+    }
+
+    public class KeywordGammaNode : KeywordSymbol
+    {
+        public override void ToLatex(StringBuilder builder)
+        {
+            builder.Append("\\gamma");
+        }
+
+        public override void ToString(StringBuilder builder)
+        {
+            builder.Append('γ'); // u03B3
+        }
+    }
+
+    public class KeywordPiNode : KeywordSymbol
     {
         public override void ToLatex(StringBuilder builder)
         {
@@ -313,7 +477,7 @@ namespace Symbolic_Algebra_Solver.Parsing
     {
         public readonly string Symbol;
 
-        public SymbolNode(string symbol)
+        public SymbolNode(string symbol) : base(NodeType.NonNumeric)
         {
             Symbol = symbol;
         }
@@ -333,7 +497,7 @@ namespace Symbolic_Algebra_Solver.Parsing
     {
         public readonly string Numeric;
 
-        public NumericNode(string numeric)
+        public NumericNode(string numeric) : base(NodeType.Numeric)
         {
             Numeric = numeric;
         }
@@ -351,7 +515,7 @@ namespace Symbolic_Algebra_Solver.Parsing
 
     public class EmptyOperandNode : AbstractSyntaxTree
     {
-        public EmptyOperandNode() { }
+        public EmptyOperandNode() : base(NodeType.Numeric) { }
 
         public override void ToLatex(StringBuilder builder)
         {

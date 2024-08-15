@@ -80,7 +80,20 @@ namespace Symbolic_Algebra_Solver.Models
             get { return _OutputExpression; }
             set
             {
-                _OutputExpression = value;
+                foreach(char c in value)
+                {
+                    if (Grammer.IsSpecialSymbol(c, out var symbolValue))
+                    {
+                        _builder.Append(symbolValue);
+                    }
+                    else
+                    {
+                        _builder.Append(c);
+                    }
+                }
+
+                _OutputExpression = _builder.ToString();
+                _builder.Clear();
                 OnPropertyChanged();
             }
         }
@@ -121,9 +134,21 @@ namespace Symbolic_Algebra_Solver.Models
         }
         private void FactorExpression()
         {
+            StringBuilder strBuilder = new();
+            try
+            {
+                _expressionTree?.ToString(strBuilder);
+                MessageBox.Show(strBuilder.ToString());
+            }
+            catch (EmptyOperandException e)
+            {
+                MessageBox.Show(e.Message);
+                return;
+            }
+
             using (Py.GIL())
             {
-                OutputExpression = SympyCS.factor(_InputExpression);
+                OutputExpression = SympyCS.factor(strBuilder.ToString());
             }
         }
 
@@ -136,9 +161,21 @@ namespace Symbolic_Algebra_Solver.Models
 
         private void LogExpression()
         {
+            StringBuilder strBuilder = new();
+            try
+            {
+                _expressionTree?.ToString(strBuilder);
+                MessageBox.Show(strBuilder.ToString());
+            }
+            catch (EmptyOperandException e)
+            {
+                MessageBox.Show(e.Message);
+                return;
+            }
+
             using (Py.GIL())
             {
-                OutputExpression = SympyCS.log(_InputExpression);
+                OutputExpression = SympyCS.log(strBuilder.ToString());
             }
         }
 
