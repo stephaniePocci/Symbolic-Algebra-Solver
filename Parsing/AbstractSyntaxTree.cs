@@ -1,6 +1,4 @@
-﻿
-
-using System.Text;
+﻿using System.Text;
 
 namespace Symbolic_Algebra_Solver.Parsing
 {
@@ -180,6 +178,7 @@ namespace Symbolic_Algebra_Solver.Parsing
             {
                 builder.Append(" \\cdot ");
             }
+            builder.Append(' ');
             builder.Append(rightStr);
         }
 
@@ -324,154 +323,50 @@ namespace Symbolic_Algebra_Solver.Parsing
 
     #endregion
 
-    #region KeywordFunctions
-
-    public abstract class KeywordFunction :AbstractSyntaxTree
+    public class KeywordFunction :AbstractSyntaxTree
     {
-        public KeywordFunction() : base(NodeType.NonNumeric) { }
-    }
+        private readonly string _latex;
+        private readonly string _raw;
 
-    public class KeywordSinNode : KeywordFunction
-    {
-        public KeywordSinNode() { }
+        public KeywordFunction(string latex, string raw) : base(NodeType.NonNumeric) 
+        {
+            _latex = latex;
+            _raw = raw;
+        }
 
         public override void ToLatex(StringBuilder builder)
         {
-            builder.Append("\\sin"); 
+            builder.Append(_latex);
         }
 
         public override void ToString(StringBuilder builder)
         {
-            builder.Append("sin");
+            builder.Append(_raw);
         }
     }
 
-    public class KeywordCosNode : KeywordFunction
+    public class KeywordSymbol : AbstractSyntaxTree
     {
+        private readonly string _latex;
+        private readonly string _raw;
+
+        public KeywordSymbol(string latex, string raw) : base(NodeType.NonNumeric) 
+        {
+            _latex = latex;
+            _raw = raw;
+        }
+
         public override void ToLatex(StringBuilder builder)
         {
-            builder.Append("\\cos");
+            builder.Append(_latex);
         }
 
         public override void ToString(StringBuilder builder)
         {
-            builder.Append("cos");
+            builder.Append(_raw);
         }
     }
 
-    public class KeywordTanNode : KeywordFunction
-    {
-        public override void ToLatex(StringBuilder builder)
-        {
-            builder.Append("\\tan");
-        }
-
-        public override void ToString(StringBuilder builder)
-        {
-            builder.Append("tan");
-        }
-    }
-
-    public class KeywordArcSinNode : KeywordFunction
-    {
-        public override void ToLatex(StringBuilder builder)
-        {
-            builder.Append("\\arcsin");
-        }
-
-        public override void ToString(StringBuilder builder)
-        {
-            builder.Append("asin");
-        }
-    }
-
-    public class KeywordArcCosNode : KeywordFunction
-    {
-        public override void ToLatex(StringBuilder builder)
-        {
-            builder.Append("\\arccos");
-        }
-
-        public override void ToString(StringBuilder builder)
-        {
-            builder.Append("acos");
-        }
-    }
-    public class KeywordArcTanNode : KeywordFunction
-    {
-        public override void ToLatex(StringBuilder builder)
-        {
-            builder.Append("\\arctan");
-        }
-
-        public override void ToString(StringBuilder builder)
-        {
-            builder.Append("atan");
-        }
-    }
-
-    #endregion
-
-    #region KeywordSymbols
-
-    public abstract class KeywordSymbol : AbstractSyntaxTree
-    {
-        public KeywordSymbol() : base(NodeType.NonNumeric) { }
-    }
-
-    public class KeywordAlphaNode : KeywordSymbol
-    {
-        public override void ToLatex(StringBuilder builder)
-        {
-            builder.Append("\\alpha");
-        }
-
-        public override void ToString(StringBuilder builder)
-        {
-            builder.Append('α'); // u03B1
-        }
-    }
-
-    public class KeywordBetaNode : KeywordSymbol
-    {
-        public override void ToLatex(StringBuilder builder)
-        {
-            builder.Append("\\beta"); // u03B2
-        }
-
-        public override void ToString(StringBuilder builder)
-        {
-            builder.Append('ß');
-        }
-    }
-
-    public class KeywordGammaNode : KeywordSymbol
-    {
-        public override void ToLatex(StringBuilder builder)
-        {
-            builder.Append("\\gamma");
-        }
-
-        public override void ToString(StringBuilder builder)
-        {
-            builder.Append('γ'); // u03B3
-        }
-    }
-
-    public class KeywordPiNode : KeywordSymbol
-    {
-        public override void ToLatex(StringBuilder builder)
-        {
-            builder.Append("\\pi");
-        }
-
-        public override void ToString(StringBuilder builder)
-        {
-            builder.Append('π');
-        }
-    }
-
-    #endregion
 
     public class SymbolNode : AbstractSyntaxTree
     {
@@ -490,6 +385,28 @@ namespace Symbolic_Algebra_Solver.Parsing
         public override void ToString(StringBuilder builder)
         {
             builder.Append(Symbol);
+        }
+    }
+
+    public class SpecialSymbolNode : AbstractSyntaxTree
+    {
+        private readonly string _latex;
+        private readonly string _raw;
+
+        public SpecialSymbolNode(string latex, string raw) : base(NodeType.NonNumeric)
+        {
+            _latex = latex;
+            _raw = raw;
+        }
+
+        public override void ToLatex(StringBuilder builder)
+        {
+            builder.Append(_latex);
+        }
+
+        public override void ToString(StringBuilder builder)
+        {
+            builder.Append(_raw);
         }
     }
 

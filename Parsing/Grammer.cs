@@ -1,49 +1,30 @@
 ﻿using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
-using static Symbolic_Algebra_Solver.Parsing.KeywordEnum;
 
 namespace Symbolic_Algebra_Solver.Parsing
 {
-    #region Enums
-
-    public enum KeywordEnum
-    {
-        Sin,
-        Cos,
-        Tan,
-        Arcsin,
-        Arccos,
-        Arctan,
-
-        Alpha,
-        Beta,
-        Gamma,
-
-        Pi,
-    }
-
-    #endregion
-
     public static class Grammer
     {
         public static readonly ReadOnlyDictionary<string, Keyword> Keywords = new(new Dictionary<string, Keyword>
         {
-            { "sin", new Keyword(id: Sin, isFunction: true) },
-            { "cos", new Keyword(id: Cos, isFunction: true) },
-            { "tan", new Keyword(id: Tan, isFunction: true) },
-            { "arcsin", new Keyword(id: Arcsin, isFunction: true) },
-            { "arccos", new Keyword(id: Arccos, isFunction: true) },
-            { "arctan", new Keyword(id: Arctan, isFunction: true) },
+            { "sin", new Keyword(isFunction: true, latex: "\\sin", raw: "sin") },
+            { "cos", new Keyword(isFunction: true, latex: "\\cos", raw: "cos") },
+            { "tan", new Keyword(isFunction: true, latex: "\\tan", raw: "tan") },
+            { "arcsin", new Keyword(isFunction: true, latex: "\\arcsin", raw: "asin") },
+            { "arccos", new Keyword(isFunction: true, latex: "\\arccos", raw: "acos") },
+            { "arctan", new Keyword(isFunction: true, latex: "\\arctan", raw: "atan") },
 
-            { "alpha",  new Keyword(id: Alpha, isFunction: false) },
-            { "beta",   new Keyword(id: Beta, isFunction: false) },
-            { "gamma",  new Keyword(id: Gamma, isFunction: false) },
+            { "alpha",  new Keyword(isFunction: false, latex: "\\alpha", raw: "α") },
+            { "beta",   new Keyword(isFunction: false, latex: "\\beta",  raw: "ß") },
+            { "gamma",  new Keyword(isFunction: false, latex: "\\gamma", raw: "γ") },
 
-            { "pi",  new Keyword(id: Pi, isFunction: false) },
+            { "theta", new Keyword(isFunction: false, latex: "\\theta", raw: "θ") },
+
+            { "pi",  new Keyword(isFunction: false, latex: "\\pi", raw: "π") },
         });
 
         // for now we assume operators are only single characters
-        private static readonly HashSet<string> _operators = new HashSet<string>()
+        private static readonly HashSet<string> _operators = new()
         {
             "-",
             "+",
@@ -52,17 +33,20 @@ namespace Symbolic_Algebra_Solver.Parsing
             "/",
         };
 
-        private static readonly Dictionary<char, string> _specialSymbols = new Dictionary<char, string>()
+        public static readonly ReadOnlyDictionary<char, SpecialSymbol> SpecialSymbols = new(new Dictionary<char, SpecialSymbol>
         {
-            { '\u03B1', "\\alpha" }, // α
-            { '\u03B2', "\\beta" },  // ß
-            { '\u03B3', "\\gamma" }, // γ
-            { '\u03C0', "\\pi" }     // π
-        };
+            { '\u03B1', new SpecialSymbol(latex: "\\alpha", raw: 'α') },
+            { '\u03B2', new SpecialSymbol(latex: "\\beta",  raw: 'ß') },
+            { '\u03B3', new SpecialSymbol(latex: "\\gamma", raw: 'γ') },
+            
+            { '\u03B8', new SpecialSymbol(latex: "\\theta", raw: 'θ') },
 
-        public static bool IsSpecialSymbol(char matchChar, [MaybeNullWhen(false)] out string symbolValue)
+            { '\u03C0', new SpecialSymbol(latex: "\\pi",    raw: 'π') },
+        });
+
+        public static bool IsSpecialSymbol(char matchChar, [MaybeNullWhen(false)] out SpecialSymbol symbolValue)
         {
-            if (_specialSymbols.TryGetValue(matchChar, out string? value))
+            if (SpecialSymbols.TryGetValue(matchChar, out var value))
             {
                 symbolValue = value;
 
@@ -115,13 +99,27 @@ namespace Symbolic_Algebra_Solver.Parsing
 
     public class Keyword
     {
-        public readonly KeywordEnum Id;
         public readonly bool IsFunction;
+        public readonly string Latex;
+        public readonly string Raw;
 
-        public Keyword(KeywordEnum id, bool isFunction)
+        public Keyword(bool isFunction, string latex, string raw)
         {
-            Id = id;
             IsFunction = isFunction;
+            Latex = latex;
+            Raw = raw;
+        }
+    }
+
+    public class SpecialSymbol
+    {
+        public readonly string Latex;
+        public readonly char Raw;
+
+        public SpecialSymbol(string latex, char raw)
+        {
+            Latex = latex;
+            Raw = raw;
         }
     }
 }

@@ -1,5 +1,4 @@
-﻿
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 
 namespace Symbolic_Algebra_Solver.Parsing
 {
@@ -160,14 +159,20 @@ namespace Symbolic_Algebra_Solver.Parsing
                     _nextToken = _scanner.ScanToken();
                     return new SymbolNode(symbol);
 
+                case TokenType.SpecialSymbol:
+                    var specialSymbol = Grammer.SpecialSymbols[Char.Parse(_nextToken.Value)];
+                    _nextToken = _scanner.ScanToken();
+                    return new SpecialSymbolNode(specialSymbol.Latex, specialSymbol.Raw.ToString());
+
                 case TokenType.Operator:
                     return new EmptyOperandNode();
 
                 case TokenType.Function:
                     return ParseFunction();
 
-                case TokenType.Keyword:    
-                    var keywordNode = CreateKeywordSymbolNode(_nextToken.Value);
+                case TokenType.Keyword:  
+                    var keywordSymbol = Grammer.Keywords[_nextToken.Value];
+                    AbstractSyntaxTree keywordNode = new KeywordSymbol(keywordSymbol.Latex, keywordSymbol.Raw);
                     _nextToken = _scanner.ScanToken();
                     return keywordNode;
 
@@ -201,7 +206,8 @@ namespace Symbolic_Algebra_Solver.Parsing
 
         private AbstractSyntaxTree ParseFunction()
         {
-            KeywordFunction func = CreateKeywordFunctionNode(_nextToken!.Value);
+            var keywordFunc = Grammer.Keywords[_nextToken!.Value];
+            KeywordFunction func = new(keywordFunc.Latex, keywordFunc.Raw);
             AbstractSyntaxTree args;
             _nextToken = _scanner.ScanToken();
 
@@ -284,64 +290,6 @@ namespace Symbolic_Algebra_Solver.Parsing
                 throw new ParsingFailedException("Function argument missing parenthesis!");
             }
         }
-
-
-        private static AbstractSyntaxTree CreateKeywordSymbolNode(string keyword)
-        {
-            AbstractSyntaxTree? node;
-
-            switch (Grammer.Keywords[keyword].Id)
-            {
-                case KeywordEnum.Alpha:
-                    node = new KeywordAlphaNode();
-                    break;
-                case KeywordEnum.Beta:
-                    node = new KeywordBetaNode();
-                    break;
-                case KeywordEnum.Gamma:
-                    node = new KeywordGammaNode();
-                    break;
-                case KeywordEnum.Pi:
-                    node = new KeywordPiNode();
-                    break;
-                default:
-                    throw new AssertionFailedException("Creating a keyword node that is not a symbol!");
-            }
-
-            return node!;
-        }
-
-        private static KeywordFunction CreateKeywordFunctionNode(string keyword)
-        {
-            KeywordFunction? node;
-
-            switch (Grammer.Keywords[keyword].Id)
-            {
-                case KeywordEnum.Sin:
-                    node = new KeywordSinNode();
-                    break;
-                case KeywordEnum.Cos:
-                    node = new KeywordCosNode();
-                    break;
-                case KeywordEnum.Tan:
-                    node = new KeywordTanNode();
-                    break;
-                case KeywordEnum.Arcsin:
-                    node = new KeywordArcSinNode();
-                    break;
-                case KeywordEnum.Arccos:
-                    node = new KeywordArcCosNode();
-                    break;
-                case KeywordEnum.Arctan:
-                    node = new KeywordArcTanNode();
-                    break;
-                default:
-                    throw new AssertionFailedException("Creating a keyword node that is not a function!");
-            }
-
-            return node;
-        }
-
     }
 
     public class AssertionFailedException : Exception

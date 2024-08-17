@@ -80,11 +80,11 @@ namespace Symbolic_Algebra_Solver.Models
             get { return _OutputExpression; }
             set
             {
-                foreach(char c in value)
+                foreach (char c in value)
                 {
                     if (Grammer.IsSpecialSymbol(c, out var symbolValue))
                     {
-                        _builder.Append(symbolValue);
+                        _builder.Append(symbolValue.Latex);
                     }
                     else
                     {

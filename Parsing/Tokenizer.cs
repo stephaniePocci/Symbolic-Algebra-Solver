@@ -88,7 +88,7 @@ namespace Symbolic_Algebra_Solver.Parsing
                 {
                     if (Grammer.IsSpecialSymbol(c, out var value))
                     {
-                        _tokenList.Add(new Token(value, TokenType.Symbol));
+                        _tokenList.Add(new Token(value.Raw, TokenType.SpecialSymbol));
                         ++index;
                     }
                     else
@@ -311,6 +311,7 @@ namespace Symbolic_Algebra_Solver.Parsing
     {
         Numeric,
         Symbol,
+        SpecialSymbol,
         Operator,
         Function,
         Keyword,
@@ -326,6 +327,12 @@ namespace Symbolic_Algebra_Solver.Parsing
         {
             Type = type;
             Value = value;
+        }
+
+        public Token(char value, TokenType type)
+        {
+            Type = type;
+            Value = value.ToString();
         }
     }
 }
