@@ -209,6 +209,7 @@ namespace Symbolic_Algebra_Solver.Parsing
             var keywordFunc = Grammer.Keywords[_nextToken!.Value];
             KeywordFunction func = new(keywordFunc.Latex, keywordFunc.Raw);
             AbstractSyntaxTree args;
+            string funcName = _nextToken.Value;
             _nextToken = _scanner.ScanToken();
 
             if (_nextToken.Value == "(")
@@ -228,7 +229,7 @@ namespace Symbolic_Algebra_Solver.Parsing
                         }
                         else if (_nextToken.Value != "(")
                         {
-                            throw new ParsingFailedException("Please use parenthesis for function powers! Ex: sin(x)^(5+1) instead of sin(x)^5+1");
+                            throw new ParsingFailedException($"Please use parenthesis for function powers! Ex: {funcName}(x)^(5+1) instead of {funcName}(x)^5+1");
                         }
 
                         _nextToken = _scanner.ScanToken(); // consume opening parenthesis
@@ -253,7 +254,7 @@ namespace Symbolic_Algebra_Solver.Parsing
                 }
                 else if ( _nextToken.Value != "(")  // power operator after a function must be followed up by a opening parenthesis
                 {
-                    throw new ParsingFailedException("Please use parenthesis for function powers! Ex: sin^(5)x instead of sin^5x");
+                    throw new ParsingFailedException($"Please use parenthesis for function powers! Ex: {funcName}^(5)(x) instead of {funcName}^5x");
                 }
 
                 // parse power expression

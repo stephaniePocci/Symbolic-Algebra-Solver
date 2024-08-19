@@ -5,9 +5,13 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:controls="clr-namespace:WpfMath.Controls;assembly=WpfMath"
         xmlns:local="clr-namespace:Symbolic_Algebra_Solver.ViewModels"
+        xmlns:converter="clr-namespace:Symbolic_Algebra_Solver.Converter"
         d:DataContext="{d:DesignInstance local:MainViewModel, IsDesignTimeCreatable=True}"
         mc:Ignorable="d"
         Title="Symbolic Calcuator" Height="450" Width="800">
+    <Window.Resources>
+        <converter:BooleanVisibilityConvertor x:Key="BooleanVisibilityConvertor"/>
+    </Window.Resources>
     <Grid>
         <StackPanel Margin="0 50 0 0" HorizontalAlignment="Center" Orientation="Vertical" MinWidth="250">
             <Label Padding="3 0 0 3">Expression</Label>
@@ -38,8 +42,9 @@
                     </Button.Resources>
                 </Button>
             </StackPanel>
+            
             <Label Padding="0 5 5 5">This expression will be simplified:</Label>
-            <Border BorderBrush="Black" Padding="5" BorderThickness="0.8" MinHeight="100" CornerRadius="2">
+            <Border BorderBrush="Black" Padding="5" BorderThickness="0.8" MinHeight="100" CornerRadius="2" Visibility="{Binding Expression.ParseStatus, Converter={StaticResource BooleanVisibilityConvertor}}">
                 <controls:FormulaControl 
                     HorizontalAlignment="Center" 
                     VerticalAlignment="Center"
@@ -47,6 +52,10 @@
                     Formula="{Binding Expression.LatexInputExpression}"
                 />
             </Border>
+            <Border BorderBrush="Black" Padding="5" BorderThickness="0.8" MinHeight="100" CornerRadius="2" Visibility="{Binding Expression.ParseStatus, Converter={StaticResource BooleanVisibilityConvertor}, ConverterParameter='negate'}">
+                <TextBlock Text="{Binding Expression.ErrorMsg}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            
             <Label Padding="0 5 5 5">Result:</Label>
             <Border BorderBrush="Black" Padding="5" BorderThickness="0.8" MinHeight="100" CornerRadius="2">
                 <controls:FormulaControl 
@@ -56,6 +65,7 @@
                     Formula="{Binding Expression.OutputExpression}"
                 />
             </Border>
+            
         </StackPanel>
     </Grid>
 </Window>

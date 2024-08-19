@@ -13,7 +13,7 @@ namespace Symbolic_Algebra_Solver.Models
         private Parser _parser;
         private StringBuilder _builder;
         private AbstractSyntaxTree? _expressionTree;
-        private bool _parseStatus; // true parse succeeded, else parsed input is invalid
+        
 
         public SimpleExpression()
         {
@@ -53,18 +53,19 @@ namespace Symbolic_Algebra_Solver.Models
                         _expressionTree = result;
 
                         _builder.Clear();
-                        _parseStatus = true;
+                        ParseStatus = true;
                     }
                     else
                     {
-                        MessageBox.Show(status);
-                        _parseStatus = false;
+                        ErrorMsg = status;
+                        ParseStatus = false;
                     }
                 }
                 else
                 {
                     LatexInputExpression = string.Empty;
-                    _parseStatus = false;
+                    ErrorMsg = string.Empty;
+                    ParseStatus = false;
                 }
 
                 OnPropertyChanged();
@@ -95,6 +96,28 @@ namespace Symbolic_Algebra_Solver.Models
                 _OutputExpression = _builder.ToString();
                 _builder.Clear();
                 OnPropertyChanged();
+            }
+        }
+
+        private string _ErrorMsg = string.Empty;
+        public string ErrorMsg
+        {
+            get { return _ErrorMsg; }
+            set 
+            {
+                _ErrorMsg = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private bool _parseStatus; // true parse succeeded, else parsed input is invalid
+        public bool ParseStatus
+        {
+            get { return _parseStatus; }
+            set 
+            {
+                _parseStatus = value; 
+                OnPropertyChanged(); 
             }
         }
 
